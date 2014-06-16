@@ -1,0 +1,59 @@
+//------------------- Run Reference Points -------------------
+
+cout << "\n\n";
+cout << "----------------------------------------------------------\n";
+cout << "               RUNNING REFERENCE POINTS                   \n";
+cout << "----------------------------------------------------------\n";
+
+
+// ADP:  M0.80/35kft/ISA+0 (EDS Point 1):
+MODELNAMEALT = "ADP (M0.80/35kft/ISA+0) (EDS Pt 1)";
+CASE = 1; RunMaxPower( 0.80, 35000., 0., maxNcref, maxT4SLSref, maxT4RTOref ); page.display(); 
+saveOpPoint("");
+
+// Top of climb: M0.80/35kft/ISA+0 (EDS Point 2):
+MODELNAMEALT = "Top of Climb (M0.80/35kft/ISA+0) (EDS Pt 2)";
+CASE = 2; RunMaxPower( 0.80, 35000., 0., maxNcref2, maxT4SLSref, maxT4RTOref ); page.display(); 
+//saveOpPoint("");
+
+// Rolling takeoff:  M0.25/SL/ISA+27F (EDS Point 3):
+RunMaxPower( 0.5, 20000., 0.,  maxNcref, maxT4SLSref, maxT4RTOref );
+RunMaxPower( 0.3, 10000., 27., maxNcref, maxT4SLSref, maxT4RTOref );
+MODELNAMEALT = "Rolling Takeoff (M0.25/SL/ISA+27F) (EDS Pt 3)";
+CASE = 3; RunMaxPower( 0.25, 0.0, 27., maxNcref, maxT4SLSref, maxT4RTOref ); page.display(); 
+saveOpPoint("");
+
+// SLS:  M0.0/SL/ISA+27F (EDS Point 4):
+MODELNAMEALT = "Sea Level Static (M0.0/SL/ISA+27F) (EDS Pt 4)";
+CASE = 4; RunMaxPower( 0.0, 0.0, 27., maxNcref, maxT4SLSref, maxT4RTOref ); page.display(); 
+saveOpPoint("");
+
+// SLS:  M0.0/SL/ISA+0, benign conditions for emissions certification, no customer power or bleed (EDS Point 5):
+benignConditions("SET"); Ambient.dTs = 0.0;
+MODELNAMEALT = "SLS, Emissions Point (M0.0/SL/ISA+0) (EDS Pt 5)";
+CASE = 5; RunPartPower(); page.display(); 
+benignConditions("UNSET");
+RunMaxPower( 0.0, 0.0, 27., maxNcref, maxT4SLSref, maxT4RTOref );
+
+// SLS:  M0.0/SL/ISA+0, standard day, customer bleed for performance envelope calculations:
+HPC.BleedSave = HPC.BleedFlow;
+HPC.BleedFlow = custBleedop1; 
+MODELNAMEALT = "SLS, Customer Bleed (M0.0/SL/ISA+0)";
+CASE = 7; RunMaxPower( 0.0, 0.0, 0., maxNcop1, maxT4SLSop1, maxT4RTOop1 ); page.display(); 
+HPC.BleedFlow = HPC.BleedSave;
+
+// Rolling takeoff:  M0.25/SL/ISA+0, standard day, customer bleed for performance envelope calculations:
+HPC.BleedSave = HPC.BleedFlow;
+HPC.BleedFlow = custBleedop1; 
+MODELNAMEALT = "RTO, Customer Bleed (M0.25/SL/ISA+0)";
+CASE = 8; RunMaxPower( 0.25, 0.0, 0., maxNcop1, maxT4SLSop1, maxT4RTOop1 ); page.display(); 
+HPC.BleedFlow = HPC.BleedSave;
+
+// Top of climb:  M0.80/35kft/ISA+0, standard day, customer bleed for performance envelope calculations:
+HPC.BleedSave = HPC.BleedFlow;
+HPC.BleedFlow = custBleedop1; 
+MODELNAMEALT = "TOC, Customer Bleed (M0.80/35kft/ISA+0)";
+CASE = 9; RunMaxPower( 0.80, 35000., 0., maxNcop1, maxT4SLSop1, maxT4RTOop1 ); page.display(); 
+HPC.BleedFlow = HPC.BleedSave;
+
+MODELNAMEALT = " ";

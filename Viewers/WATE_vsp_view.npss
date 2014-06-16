@@ -1,0 +1,111 @@
+OutFileStream WATE_vsp_Stream {
+  filename = "Output\CF34.vsp";
+}
+PageViewer WATE_vsp_view {
+
+  WATE_vsp_Header_TB headerBlock {
+  }
+
+  WATE_vsp_Compressor_TB fan {
+    comp_name = "WATE_Fan";
+  }
+
+  WATE_vsp_Dummy_TB splitter_dummy {
+    comp_name = "WATE_Splitter";
+  }  
+    
+  WATE_vsp_Duct_TB fan_out_duct {
+    comp_name = "WATE_Duct6";
+  }
+
+  WATE_vsp_Compressor_TB HPC_compressor {
+    comp_name = "WATE_HPC";
+  }
+  
+  WATE_vsp_Bleed_TB bleeder3 {
+    comp_name = "WATE_Bld3";
+  }
+
+  WATE_vsp_Burner_TB burner {
+    comp_name = "WATE_Burner";
+  }
+
+  WATE_vsp_Turbine_TB HPT_turbine {
+    comp_name = "WATE_HPT";
+  }  
+  
+  WATE_vsp_Duct_TB HPT_out_duct {
+    comp_name = "WATE_Duct11";
+  }  
+
+  WATE_vsp_Turbine_TB LPT_turbine {
+    comp_name = "WATE_LPT";
+  } 
+  
+  WATE_vsp_Duct_TB LPT_out_duct {
+    comp_name = "WATE_Duct13";
+  } 
+  
+  WATE_vsp_Nozzle_TB corenozzle {
+    comp_name = "WATE_Core_Nozz";
+  }
+
+  WATE_vsp_Duct_TB bypass_duct {
+    comp_name = "WATE_Duct15";
+  }  
+  
+  WATE_vsp_Nozzle_TB bypassnozzle {
+    comp_name = "WATE_Byp_Nozz";
+  }
+  
+  WATE_vsp_Dummy_TB LP_shaft_dummy {
+    comp_name = "WATE_LP_Shaft";
+  } 
+
+  WATE_vsp_Dummy_TB HP_shaft_dummy {
+    comp_name = "WATE_HP_Shaft";
+  }  
+
+  WATE_vsp_Inlet_TB inlet {
+    comp_name = "WATE_Inlet";
+  }
+
+  WATE_vsp_Dummy_TB engine_mount_dummy {
+    comp_name = "S_EngineMount";
+  }
+
+  WATE_vsp_Dummy_TB accessories_dummy {
+    comp_name = "S_Accessories";
+  } 
+ 
+  
+  WATE_vsp_Footer_TB footerBlock {
+  }
+
+  
+
+  anchor = "headerBlock";
+  headerBlock.bottom = "fan";
+  fan.bottom = "splitter_dummy";
+  splitter_dummy.bottom = "fan_out_duct";
+  fan_out_duct.bottom = "HPC_compressor";
+  HPC_compressor.bottom = "bleeder3";
+  bleeder3.bottom = "burner";
+  burner.bottom = "HPT_turbine";
+  HPT_turbine.bottom = "HPT_out_duct";
+  HPT_out_duct.bottom = "LPT_turbine";
+  LPT_turbine.bottom = "LPT_out_duct";
+  LPT_out_duct.bottom = "corenozzle";
+  corenozzle.bottom = "bypass_duct";
+  bypass_duct.bottom = "bypassnozzle";
+  bypassnozzle.bottom = "LP_shaft_dummy";
+  LP_shaft_dummy.bottom = "HP_shaft_dummy";
+  HP_shaft_dummy.bottom = "inlet";
+  inlet.bottom = "engine_mount_dummy";
+  engine_mount_dummy.bottom = "accessories_dummy";
+  accessories_dummy.bottom = "footerBlock";
+
+
+  outStreamHandle = "WATE_vsp_Stream";
+  }
+

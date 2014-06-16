@@ -1,0 +1,163 @@
+//------------------- Run Emission Calculations -------------------
+
+real EINOx_TO, EINOx_CO, EINOx_AP, EINOx_ID;     // Units g NOx/kg fuel
+real wf1, wf2, wf3, wf4;                         // Burner.Wfuel / 2.2046  (kg/s)
+real LTONOx_DpF00 = 0.0, LTO_Rule4, LTO_Rule6; 
+
+cout << "----------------------------------------------------------\n";
+cout << "              RUNNING SLS CASES TO COMPUTE LTO NOx        \n";
+cout << "----------------------------------------------------------\n";
+
+CASE = 201; 
+
+// Run down to sea level if we are still at altitude:
+if (Ambient.alt > 20000.) {
+  cout << "Running the model back to sea level...     \n"; 
+  RunMaxPower( 0.70, 30000., 0.,  maxNcref, maxT4SLSref, maxT4RTOref );
+  RunMaxPower( 0.60, 20000., 0.,  maxNcref, maxT4SLSref, maxT4RTOref );
+  RunMaxPower( 0.55, 17000., 0.,  maxNcref, maxT4SLSref, maxT4RTOref );
+  RunMaxPower( 0.50, 15000., 0.,  maxNcref, maxT4SLSref, maxT4RTOref );
+  RunMaxPower( 0.40, 10000., 27., maxNcref, maxT4SLSref, maxT4RTOref );
+  RunMaxPower( 0.20, 5000.,  27., maxNcref, maxT4SLSref, maxT4RTOref );
+}
+
+// Now run a maximum power case at SLS, ISA+27F to get the SLS rated thrust
+// (This sets the MaxThrust variable):
+RunMaxPower( 0.0, 0.0, 27.0, maxNcref, maxT4SLSref, maxT4RTOref );
+
+// Set customer power and bleed to zero and set inlet recovery to unity:
+benignConditions("SET");
+
+// Now set conditions to SLS, ISA+0:
+Ambient.MN = 0.00; Ambient.alt = 0.0; Ambient.dTs = 0.0;
+
+
+// Be sure to use part power calls for the following
+// cases - even when PC=50 - so that we do not exceed 
+// the maximum rated SLS thrust (set above):
+
+//---------------------------------------------
+// Takeoff Thrust
+//---------------------------------------------
+
+PC = 50.0; RunPartPower(); 
+EINOx_TO = Burner.Emissions.EINOx;
+wf1      = Burner.Wfuel/2.2046; 
+ei_data1.display(); 
+//page.display();
+real EIOPR = PERF.myOPR;
+
+cout << "SLS Thrust, PC50.0 (takeoff)              = " << toStr(PERF.myFn, "f6.0") ;
+cout << "  Fuel Flow = " << toStr(PERF.WfuelHour, "f6.0") ;
+cout << "  NOx = " << toStr(Burner.Emissions.EINOx, "f6.3") << "\n";
+
+//---------------------------------------------
+// Climb Thrust
+//---------------------------------------------
+
+PC = 45.5; RunPartPower(); 
+EINOx_CO = Burner.Emissions.EINOx;
+wf2      = Burner.Wfuel/2.2046; 
+ei_data1.display(); 
+//page.display();
+
+cout << "SLS Thrust, PC45.5 (climb, 85% thrust)    = " << toStr(PERF.myFn, "f6.0") ;
+cout << "  Fuel Flow = " << toStr(PERF.WfuelHour, "f6.0") ;
+cout << "  NOx = " << toStr(Burner.Emissions.EINOx, "f6.3") << "\n";
+
+PC = 41.0; RunPartPower(); 
+PC = 36.0; RunPartPower(); 
+PC = 32.0; RunPartPower(); 
+
+//---------------------------------------------
+// Approach Thrust
+//---------------------------------------------
+
+PC = 29.0; RunPartPower(); 
+EINOx_AP = Burner.Emissions.EINOx;
+wf3      = Burner.Wfuel/2.2046; 
+ei_data1.display(); 
+//page.display();
+
+cout << "SLS Thrust, PC29.0 (approach, 30% thrust) = " << toStr(PERF.myFn, "f6.0") ;
+cout << "  Fuel Flow = " << toStr(PERF.WfuelHour, "f6.0") ;
+cout << "  NOx = " << toStr(Burner.Emissions.EINOx, "f6.3") << "\n";
+
+PC = 26.0; RunPartPower();  
+PC = 24.0; RunPartPower();  
+PC = 22.0; RunPartPower(); 
+
+//---------------------------------------------
+// Idle Thrust
+//---------------------------------------------
+
+PC = 21.7; RunPartPower(); 
+EINOx_ID = Burner.Emissions.EINOx;
+wf4      = Burner.Wfuel/2.2046; 
+//ei_data1.display(); 
+//page.display();
+
+cout << "SLS Thrust, PC21.7 (idle, 7% thrust)      = " << toStr(PERF.myFn, "f6.0") ;
+cout << "  Fuel Flow = " << toStr(PERF.WfuelHour, "f6.0") ;
+cout << "  NOx = " << toStr(Burner.Emissions.EINOx, "f6.3") << "\n";
+
+//---------------------------------------------
+// Dp/Foo:
+//---------------------------------------------
+
+LTONOx_DpF00 = ( EINOx_TO*wf1*0.7 + EINOx_CO*wf2*2.2 + EINOx_AP*wf3*4.0 + EINOx_ID*wf4*26.0 )*60.0 / ( MaxThrust * 4.4482 / 1000. );
+cout << "NOx Dp/Foo = " << LTONOx_DpF00 << "\n";
+
+//---------------------------------------------
+// Subsonic rule stringencies:
+//---------------------------------------------
+
+// Older LTO_Rule = 32.0 + 1.6*PERF.OPR; 
+// CAEP/4 and CAEP/6 LTO rules:
+
+if(EIOPR <= 30) {
+   if(MaxThrust / 224.8 > 89) {
+      LTO_Rule4 = 19 + 1.6 * EIOPR;
+      LTO_Rule6 = 16.72 + 1.408 * EIOPR;
+   } else {
+      LTO_Rule4 = 37.572 + 1.6 * EIOPR - 0.2087 * MaxThrust / 224.8;
+      LTO_Rule6 = 38.5486 + 1.6823 * EIOPR - 0.2453 * MaxThrust / 224.8 - 0.00308 * EIOPR * MaxThrust / 224.8;
+   }
+}
+
+if(EIOPR >= 62.5) {
+   LTO_Rule4 = 32 + 1.6 * EIOPR;
+}
+
+if(EIOPR >= 82.6) {
+   LTO_Rule6 = 32 + 1.6 * EIOPR;
+}
+
+if((EIOPR > 30) && (EIOPR < 62.5)) {
+   if(MaxThrust / 224.8 > 89) {
+      LTO_Rule4 = 7 + 2 * EIOPR;
+   } else {
+      LTO_Rule4 = 42.71 + 1.4286 * EIOPR - 0.4013 * MaxThrust / 224.8 + 0.00642 * EIOPR * MaxThrust / 224.8;
+   }
+}
+
+if((EIOPR > 30) && (EIOPR < 82.6)) {
+   if(MaxThrust / 224.8 > 89) {
+      LTO_Rule6 = -1.04 + 2 * EIOPR;
+   } else {
+      LTO_Rule6 = 46.16 + 1.4286 * EIOPR - 0.5303 * MaxThrust / 224.8 + 0.00642 * EIOPR * MaxThrust / 224.8;
+   }
+}
+
+ei_data2.display();
+
+// March back up throttle curce:
+PC = 29.0; RunPartPower(); 
+PC = 45.5; RunPartPower(); 
+PC = 50.0; RunPartPower(); 
+
+// Reset customer power and bleed and inlet recovery to original values and run max power at ISA+27F before exiting:
+benignConditions("UNSET");
+RunMaxPower( 0.0, 0.0, 27.0, maxNcref, maxT4SLSref, maxT4RTOref ); 
+
+cout << "LTO NOx emissions calculations are complete." << endl;

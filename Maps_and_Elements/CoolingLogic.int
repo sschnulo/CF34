@@ -1,0 +1,85 @@
+if ( switchTurbineCoolingLogic == "TRUE" ) {
+   //----------------------------------------------------------------------------
+   // Performs turbine cooling calculations
+   //----------------------------------------------------------------------------
+   cout << endl << "Running cooling calculations." << endl << endl;
+   real TtCombOutSave = Burner.TtCombOut;
+   cout << "Initial cooling information:" << endl;
+   cout << "HPT inlet (non-chargeable) cooling bleed fraction: " << Bld3.Cool1.fracW << endl;
+   cout << "HPT exit (chargeable) cooling bleed fraction:      " << Bld3.Cool2.fracW << endl;
+   cout << "LPT inlet (non-chargeable) cooling bleed fraction: " << HPC.Cool1.fracBldW << endl;
+   cout << "LPT exit (chargeable) cooling bleed fraction:      " << HPC.Cool2.fracBldW << endl;   
+   cout << "HPT blade cooling effectiveness (xFactor):         " << HPT.Cool.xFactor << endl;   
+   cout << "HPT vane cooling effectiveness (xFactor1):         " << HPT.Cool.xFactor1 << endl;   
+   cout << "LPT blade cooling effectiveness (xFactor):         " << LPT.Cool.xFactor << endl;   
+   cout << "LPT vane cooling effectiveness (xFactor1):         " << LPT.Cool.xFactor1 << endl << endl;
+   
+   // Switch the model to off-design mode and run it from top-of-climb ADP conditions 
+   // down to sea level static conditions (where the hot section temperatures are highest) 
+   // to invoke the Coolit logic.  Be sure that Coolit will be executed in off-design mode
+   // when called from the turbine postexecute subelement.
+   setOption( "switchDes", "OFFDESIGN" );
+   autoSolverSetup(); 
+   verify(); 
+   Ambient.MN = 0.80; Ambient.alt = 35000.; Ambient.dTs = 0.;  Burner.TtCombOut = TtCombOutSave;    run(); 
+   Ambient.MN = 0.70; Ambient.alt = 25000.; Ambient.dTs = 0.;  Burner.TtCombOut = TtCombOutSave;    run(); 
+   Ambient.MN = 0.50; Ambient.alt = 10000.; Ambient.dTs = 0.;  Burner.TtCombOut = TtCombOutSave;    run(); 
+   Ambient.MN = 0.30; Ambient.alt = 1000.;  Ambient.dTs = 27.; Burner.TtCombOut = maxT4RTOref; run(); 
+   Ambient.MN = 0.25; Ambient.alt = 0.;     Ambient.dTs = 27.; Burner.TtCombOut = maxT4RTOref; run();
+   MODELNAMEALT = "RTO, Before Cooling Calculations (M0.25/SL/ISA+27F)";
+   page.display(); 
+
+   // Set the cooling calculation balances:
+   solver.addIndependent( "HPT_Cool1" );
+   solver.addIndependent( "HPT_Cool2" );
+   solver.addIndependent( "LPT_Cool1" );
+   solver.addIndependent( "LPT_Cool2" ); 
+   solver.addDependent( "HPT.Cool.dep_BleedFlow1" );
+   solver.addDependent( "HPT.Cool.dep_BleedFlow2" );
+   solver.addDependent( "LPT.Cool.dep_BleedFlow1" );
+   solver.addDependent( "LPT.Cool.dep_BleedFlow2" );
+
+   // Run the case and compute the bleeds: 
+   verify();
+   run();  
+   MODELNAMEALT = "RTO, After Cooling Calculations (M0.25/SL/ISA+27F)";
+   page.display(); 
+   cout << "Computed cooling information:" << endl;
+   cout << "HPT inlet (non-chargeable) cooling bleed fraction: " << Bld3.Cool1.fracW << endl;
+   cout << "HPT exit (chargeable) cooling bleed fraction:      " << Bld3.Cool2.fracW << endl;
+   cout << "LPT inlet (non-chargeable) cooling bleed fraction: " << HPC.Cool1.fracBldW << endl;
+   cout << "LPT exit (chargeable) cooling bleed fraction:      " << HPC.Cool2.fracBldW << endl;  
+   cout << "HPT blade cooling effectiveness (xFactor):         " << HPT.Cool.xFactor << endl;   
+   cout << "HPT vane cooling effectiveness (xFactor1):         " << HPT.Cool.xFactor1 << endl;   
+   cout << "LPT blade cooling effectiveness (xFactor):         " << LPT.Cool.xFactor << endl;   
+   cout << "LPT vane cooling effectiveness (xFactor1):         " << LPT.Cool.xFactor1 << endl << endl;   
+
+   // Remove the cooling balances:
+   solver.removeIndependent( "HPT_Cool1" );
+   solver.removeIndependent( "HPT_Cool2" );
+   solver.removeIndependent( "LPT_Cool1" );
+   solver.removeIndependent( "LPT_Cool2" ); 
+   solver.removeDependent( "HPT.Cool.dep_BleedFlow1" );
+   solver.removeDependent( "HPT.Cool.dep_BleedFlow2" );
+   solver.removeDependent( "LPT.Cool.dep_BleedFlow1" );
+   solver.removeDependent( "LPT.Cool.dep_BleedFlow2" );
+   
+   // Now run the model back up to the ADP:
+   Ambient.MN = 0.3; Ambient.alt = 1000.;  Ambient.dTs = 27.; Burner.TtCombOut = maxT4RTOref; run(); 
+   Ambient.MN = 0.5; Ambient.alt = 10000.; Ambient.dTs = 27.; Burner.TtCombOut = maxT4RTOref; run(); 
+   Ambient.MN = 0.7; Ambient.alt = 25000.; Ambient.dTs = 0.;  Burner.TtCombOut = TtCombOutSave;    run(); 
+   Ambient.MN = 0.8; Ambient.alt = 35000.; Ambient.dTs = 0.;  Burner.TtCombOut = TtCombOutSave;    run(); 
+   MODELNAMEALT = "ADP, After Cooling Calculations (M0.80/35kft/ISA+0)";
+   page.display(); 
+   
+   // Recompute the ADP:
+   cout << "Recomputing the aerodynamic design point with new cooling bleeds." << endl;
+   cout << "(Note this may change your initial model configuration)" << endl << endl;
+   setOption( "switchDes", "DESIGN" );
+   run();  
+   MODELNAMEALT = "Recomputed ADP, After Cooling Calculations";
+   page.display();  
+
+   MODELNAMEALT = " ";
+}
+

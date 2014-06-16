@@ -1,0 +1,142 @@
+
+#ifndef _WATE_vsp_Bleed_TB__INT
+#define _WATE_vsp_Bleed_TB__INT
+
+#include "WATE_vsp_COMMON_TB.int"
+
+
+/**
+ *Author: Tim Unton
+ *Updated: 4/21/10
+ ****************************************************************/
+class WATE_vsp_Bleed_TB extends WATE_vsp_common_TB
+{
+
+  /**
+   *
+   ****************************************************************/
+  void update() {
+    string ts;
+
+    real colors[3];
+
+    int rc;
+    int returned_vps_child_pointers[] = {};
+    int vsp_pointer = randomInt(1,9999999999);
+    int vsp_child_pointers[] = {};
+    int vsp_parent_pointer = 0;
+
+//Seidel omitted
+/*
+    // DUMPS THE COMPONENTS VARIABLES
+    printValue(comp_name->list("Variable", TRUE));
+
+    cout << comp_name << ": " << endl;
+    cout << "INPORT: " << endl;
+    cout << "    INNER RADIUS   : " << comp_name->inPort.innerRadius << endl;
+    cout << "    OUTER RADIUS   : " << comp_name->inPort.outerRadius << endl;
+    cout << "    AXIAL POSITION : " << comp_name->inPort.axialPosition << endl;
+    //printValue(comp_name->inPort.list("Variable", FALSE));
+
+
+    cout << "OUTPORT: " << endl;
+    cout << "    INNER RADIUS   : " << comp_name->outPort.innerRadius << endl;
+    cout << "    OUTER RADIUS   : " << comp_name->outPort.outerRadius << endl;
+    cout << "    AXIAL POSITION : " << comp_name->outPort.axialPosition << endl;
+    //printValue(comp_name->outPort.list("Variable", FALSE));
+*/
+
+
+
+    int pad = 4; 
+
+    filledBlock = { }; 
+
+
+    real xp[] = {};
+    real yp[] = {};
+
+
+    // OUTER BLEED SURFACE
+    colors[$R] = 255.0;
+    colors[$G] = 155.0;
+    colors[$B] = 100.0;
+
+    xp.append(comp_name->inPort.axialPosition);
+    yp.append(comp_name->inPort.outerRadius * 2.0);
+    //yp.append(max(comp_name->inPort.outerRadius, comp_name->inPort.outerRadiusUp) * 2.0);
+
+ 
+    xp.append(comp_name->outPort.axialPosition);
+    yp.append(comp_name->outPort.outerRadiusDwn * 2.0);
+    //yp.append(max(comp_name->outPort.outerRadius, comp_name->outPort.outerRadiusDwn) * 2.0);
+
+    ts = comp_name->getName() + "_:_OUT";
+    returned_vps_child_pointers = add_fuse_from_points(xp, yp, xp.entries(), ts, colors[$R], colors[$G], colors[$B], 3, pad, vsp_pointer);
+    for( rc = 0 ; rc > returned_vps_child_pointers.entries() ; rc++ ) {
+      vsp_child_pointers.append( returned_vps_child_pointers[rc] );
+    }
+    returned_vps_child_pointers.resize(0);
+
+
+
+    xp.resize(0);
+    yp.resize(0);
+
+    // INNER BLEED SURFACE
+    colors[$R] = 155.0;
+    colors[$G] = 255.0;
+    colors[$B] = 100.0;
+
+    xp.append(comp_name->inPort.axialPosition);
+    yp.append(comp_name->inPort.innerRadius * 2.0);
+
+    xp.append(comp_name->outPort.axialPosition);
+    yp.append(comp_name->outPort.innerRadiusDwn * 2.0);
+
+    ts = comp_name->getName() + "_:_IN";
+    returned_vps_child_pointers = add_fuse_from_points(xp, yp, xp.entries(), ts, colors[$R], colors[$G], colors[$B], 3, pad, vsp_pointer);
+    for( rc = 0 ; rc > returned_vps_child_pointers.entries() ; rc++ ) {
+      vsp_child_pointers.append( returned_vps_child_pointers[rc] );
+    }
+    returned_vps_child_pointers.resize(0);
+
+
+    xp.resize(0);
+    yp.resize(0);
+
+
+//     if( ! comp_name->S_ThrustReverser.isEmpty() ) {
+//       // TBD ADD ThrustReverser
+//     }
+
+//     //cout << "S_FRAME EXISTS?: " << comp_name->exists("S_Frame") << endl;
+//     //cout << "S_FRAME NAME: " << comp_name->S_Frame.getName() << endl;
+//     //cout << "S_FRAME PATHNAME: " << comp_name->S_Frame.getPathName() << endl;
+//     //cout << "S_FRAME isA: " << comp_name->S_Frame.isA() << endl;
+//     //cout << "S_FRAME CHILD isA: " << comp_name->S_Frame.child.isA() << endl;
+//     //cout << "S_FRAME INTERFACES: " << comp_name->S_Frame.listInterfaces() << endl;
+//     //cout << "IS SOCKET EMPTY? :" << comp_name->S_Frame.isEmpty() << endl;
+//     if( ! comp_name->S_Frame.isEmpty() ) {
+//       //cout << "SOCKET IS FILLED" << endl;
+//       //cout << "S_FRAME INTERFACES: " << comp_name->S_Frame.child.listInterfaces() << endl;
+//       //cout << "S_FRAME.child isA: " << comp_name->S_Frame.child.isA() << endl;
+//       if ( comp_name->S_Frame.child.exists("numBlades") ) {
+//         //cout << "NUMBER OF BLADES: " << comp_name->S_Frame.numBlades << endl;
+//         if( comp_name->S_Frame.numBlades > 0 ) {
+//           string socket_name = "S_Frame";
+//           returned_vps_child_pointers = add_frame_from_socket(socket_name, pad, vsp_pointer);
+//           for( rc = 0 ; rc > returned_vps_child_pointers.entries() ; rc++ ) {
+//             vsp_child_pointers.append( returned_vps_child_pointers[rc] );
+//           }
+//           returned_vps_child_pointers.resize(0);
+//         }
+//       }
+//     }
+//     add_vsp_blank(comp_name, pad, vsp_pointer, vsp_parent_pointer, vsp_child_pointers);
+   }
+
+}
+
+#endif
+

@@ -1,0 +1,172 @@
+#ifndef _WATE_vsp_COMMON_UTIL__INT
+#define _WATE_vsp_COMMON_UTIL__INT
+
+#include <WATE_vsp_print_macros.fnc>
+#include <WATE_vsp_poly_fit.int>
+
+#define R 0
+#define G 1
+#define B 2
+
+#define X 0
+#define Y 1
+#define Z 2
+
+#define ROTOR 0
+#define STATOR 1
+
+#define ROOT 0
+#define MEAN 1
+#define TIP 2
+
+
+#define KVP_KEY 0
+#define KVP_VAL 1
+
+
+#define VSP_FUSE2_POINT 0
+#define VSP_FUSE2_CIRCLE 1
+#define VSP_FUSE2_ELLIPSE 2
+#define VSP_FUSE2_BOX 3
+#define VSP_FUSE2_ROUND_BOX 4
+#define VSP_FUSE2_GENERAL 5
+#define VSP_FUSE2_FILE 6
+#define VSP_FUSE2_EDIT 7
+
+
+/////////////////////////////////////////////////////////////////////////////////
+// Key-Value Pairs - Totally String based
+class kvp_map {
+
+  //string kvp[][] = { { } };
+  string kvp[][];
+
+  /////////////////////////////////////////////////////////////////////////////////
+
+  int set( string k, string v ) {
+    int ci = -1;
+    int i;
+    for( i = 0 ; i < kvp.entries() ; i++ ) { // OVERWRITE val FOR AN EXISTING KEY
+      if( k == kvp[i][$KVP_KEY] ) {
+        ci = i;
+        kvp[i][$KVP_VAL] = v;
+        break;
+      }
+    }
+    if( ci == -1 ) {
+      //cout << k << endl;
+      //string pair[] = { k, v }; // FOR SOME REASON THIS DIDN'T WORK
+      string pair[2];
+      pair[$KVP_KEY] = k;
+      pair[$KVP_VAL] = v;
+      //string pair[2];
+      //pair = { k, v }; // FOR SOME REASON THIS DIDN'T WORK
+      kvp.append(pair);
+      ci = kvp.entries() - 1; // ci is an zero-based index
+    }
+    return(ci);
+  }
+
+  /////////////////////////////////////////////////////////////////////////////////
+
+  string get( string k ) {
+    string rc = "";
+    int i;
+    for( i = 0 ; i <= kvp.entries() ; i++ ) {
+      if( k == kvp[i][$KVP_KEY] ) {
+        rc = kvp[i][$KVP_VAL];
+        break;
+      }
+    }
+    return(rc);
+  }
+
+  /////////////////////////////////////////////////////////////////////////////////
+
+  int length() {
+    return(kvp.entries());
+  }
+
+  /////////////////////////////////////////////////////////////////////////////////
+
+  void clear() {
+    kvp = { { } };
+  }
+
+  /////////////////////////////////////////////////////////////////////////////////
+
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+// THIS STILL NEEDS SOME MORE WORK
+// TRY STORING AS STRINGS AND PASSING BACK AND FORTH AS "any"
+//   - not too helpful
+
+// MIGHT BE NICE TO HAVE A SORT BY KEYS FUNCTION
+
+// ANY Key-Value Pairs
+class akvp_map {
+
+  string kvp[][];
+
+  /////////////////////////////////////////////////////////////////////////////////
+  // RETURNS THE INDEX OF THE NEW OR OVER-WRITTEN ELEMENT
+
+  int set( any k, any v ) {
+    int ci = -1;
+    int i;
+    for( i = 0 ; i < kvp.entries() ; i++ ) { // OVERWRITE val FOR AN EXISTING KEY
+      if( toStr(k) == kvp[i][$KVP_KEY] ) {
+        ci = i;
+        kvp[i][$KVP_VAL] = toStr(v);
+        break;
+      }
+    }
+    if( ci == -1 ) {
+      //cout << k << endl;
+      //string pair[] = { k, v }; // FOR SOME REASON THIS DIDN'T WORK
+      string pair[2];
+      pair[$KVP_KEY] = toStr(k);
+      pair[$KVP_VAL] = toStr(v);
+      //string pair[2];
+      //pair = { k, v }; // FOR SOME REASON THIS DIDN'T WORK
+      kvp.append(pair);
+      ci = kvp.entries()-1;
+    }
+    return(ci);
+  }
+
+  /////////////////////////////////////////////////////////////////////////////////
+
+  any get( any k ) {
+    any rc = "";
+    int i;
+    for( i = 0 ; i < kvp.entries() ; i++ ) {
+      if( toStr(k) == kvp[i][$KVP_KEY] ) {
+        rc = kvp[i][$KVP_VAL];
+        break;
+      }
+    }
+    return(rc);
+  }
+
+  /////////////////////////////////////////////////////////////////////////////////
+
+  int length() {
+    return(kvp.entries());
+  }
+
+  /////////////////////////////////////////////////////////////////////////////////
+
+  void clear() {
+    kvp = { { } };
+  }
+
+  /////////////////////////////////////////////////////////////////////////////////
+
+}
+
+/////////////////////////////////////////////////////////////////////////////////
+
+#endif

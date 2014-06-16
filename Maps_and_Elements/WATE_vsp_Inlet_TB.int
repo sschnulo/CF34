@@ -1,0 +1,79 @@
+
+#ifndef _WATE_vsp_Inlet_TB__INT
+#define _WATE_vsp_Inlet_TB__INT
+
+#include "WATE_vsp_COMMON_TB.int"
+
+/**
+ *Author: Tim Unton
+ *Updated: 4/21/10
+ ****************************************************************/
+class WATE_vsp_Inlet_TB extends WATE_vsp_common_TB
+{
+
+  /**
+   *
+   ****************************************************************/
+  void update() {
+    string ts;
+
+    real colors[3];
+    int rc;
+    int returned_vps_child_pointers[] = {};
+    int vsp_pointer = randomInt(1,9999999999);
+    int vsp_child_pointers[] = {};
+    int vsp_parent_pointer = 0;
+
+//Seidel omitted
+/*
+    // DUMPS THE COMPONENTS VARIABLES
+    printValue(comp_name->list("Variable", TRUE));
+
+    cout << comp_name << ": " << endl;
+    cout << "INLET - NO INPORT: " << endl;
+    //cout << "    INNER RADIUS   : " << comp_name->inPort.innerRadius << endl;
+    //cout << "    OUTER RADIUS   : " << comp_name->inPort.outerRadius << endl;
+    //cout << "    AXIAL POSITION : " << comp_name->inPort.axialPosition << endl;
+    ////printValue(comp_name->inPort.list("Variable", FALSE));
+
+
+    cout << "OUTPORT: " << endl;
+    cout << "    INNER RADIUS   : " << comp_name->outPort.innerRadius << endl;
+    cout << "    OUTER RADIUS   : " << comp_name->outPort.outerRadius << endl;
+    cout << "    AXIAL POSITION : " << comp_name->outPort.axialPosition << endl;
+    //printValue(comp_name->outPort.list("Variable", FALSE));
+*/
+
+    int pad = 4; 
+    filledBlock = { }; 
+   
+    int i;
+    real yp[] = {};
+
+    //cout << comp_name->xc << endl;
+
+    if( comp_name->xc.entries() ) {
+//      cout << "INLET CENTER" << endl;  //Seidel omitted
+      yp.resize(comp_name->yc.entries());
+      for( i = 0 ; i < comp_name->yc.entries() ; i++ ) {
+        yp[i] = comp_name->yc[i] * 2.0; // DIAMETER
+      }
+//      cout << comp_name->xc << endl;  //Seidel omitted
+//      cout << yp << endl;  //Seidel omitted
+      returned_vps_child_pointers = add_fuse_from_points( comp_name->xc, yp, comp_name->center_x.entries(), "_INLET:_IN", 155.0, 50.0, 205.0, 2, pad, vsp_pointer );
+      for( rc = 0 ; rc > returned_vps_child_pointers.entries() ; rc++ ) {
+        vsp_child_pointers.append( returned_vps_child_pointers[rc] );
+      }
+      returned_vps_child_pointers.resize(0);
+    }
+
+    // TBD NEED TO FIGURE OUT HOW TO MODEL A RECTAGULAR INLET
+    // ALSO WHEN TO USE THE AXI-SYMMETRIC DATA AS APPOSED TO THE RECTAGULAR DEFINITION
+
+    add_vsp_blank(comp_name, pad, vsp_pointer, vsp_parent_pointer, vsp_child_pointers);
+
+  }
+}
+
+#endif
+

@@ -1,0 +1,931 @@
+#include <WATEframeCustomBlock_SMJ.int>
+#include <WATEaxialCompressorBlock_SMJ.int> 
+#include <WATEaxialTurbineBlock_SMJ.int>
+#include <WATEductBlock_SMJ.int>
+#include <WATEburnerBlock_SMJ.int>
+#include <WATEnozzleBaseBlock_SMJ.int>
+#include <WATEshaftBlock_SMJ.int>
+#include <WATEinletBaseBlock_SMJ.int>
+
+#include <WATE_vsp_COMMON_UTIL.int>
+
+
+loadResource("WATElib"); 
+
+
+WATEassembly WATEa {
+
+//=================================================
+//                       FAN
+//=================================================
+WATEhiBypassFan WATE_Fan {
+   componentRef = "Fan";
+   geometryType = "ConstTipRadius";
+
+   numContainedStages = 1;
+   MNin = 0.667;
+   MNout = 0.4155;
+   stg1MaxPR = 1.8;
+   hubTipRatioIn = 0.371;
+   maxSpdRatio_in = 1;
+
+   bladeSolidity = 1.27;
+   bladeVolumeFactor = 0.024;
+   stg1BladeAR = 1.76;
+   bladeTaperRatio = 0.5; 
+   numBlades_in = 28; 
+   numStatorBlades_in = 58;
+   statorVolumeFactor = 0.14;
+   stg1StatorAR = 1.333;
+
+   RSlenRatioPreSplit = 0.41; // before splitter
+   RSlenRatioPostSplit = 1.0; //splitter to front of stator
+   RSlenRatioBypass = -.9; // stator to rear of frame - must be negative !!!!
+  
+   splitterRef ="WATE_Splitter";
+
+   stg1NcTip = 1600;
+
+   minLimit_hubTipRatio = .25;
+
+//Materials
+   real bladeMaterial.rho(real) { return 0.092; }
+   real bladeMaterial.sy(real) { return 50000.; }
+   real bladeMaterial.su(real) { return 50000.; }
+   real statorMaterial.rho(real) { return 0.1; }
+   real containmentMaterial.rho(real) { return 0.035; }
+   real caseMaterial.rho(real) { return 0.1; }
+   real igvMaterial.rho(real) { return 0.1; }
+
+// DT+
+   // BLADE TWISTS BASED ON NORMALIZED STAGE LOCATION (0.0 - 1.0)
+    Table twangle( real stg, int rors ) {
+      rors = $ROTOR {
+        stg = { 0.0, 1.0 }
+        tw_root = { 100.0, 120.0 }
+        tw_mean = { 120.0, 160.0 }
+        tw_tip = { 140.0, 175.0 }
+      }
+      rors = $STATOR {
+        stg = { 0.0, 1.0 }
+        tw_root = { 80.0, 50.0 }
+        tw_mean = { 60.0, 30.0 }
+        tw_tip = { 40.0, 10.0 }
+      }
+    }
+
+    Table tcamber(  real stg, int rors ) {
+      rors = $ROTOR {
+        stg = { 0.0, 1.0 }
+        cam_root = { 0.02, 0.1 }
+        cam_mean = { 0.02, 0.1 }
+        cam_tip = { 0.02, 0.1 }
+      }
+      rors = $STATOR {
+        stg = { 0.0, 1.0 }
+        cam_root = { 0.02, 0.1 }
+        cam_mean = { 0.02, 0.1 }
+        cam_tip = { 0.02, 0.1 }
+      }
+    }
+
+    Table tcamber_loc(  real stg, int rors ) {
+      rors = $ROTOR {
+        stg = { 0.0, 1.0 }
+        camloc_root = { 0.5, 0.35 }
+        camloc_mean = { 0.5, 0.35 }
+        camloc_tip = { 0.5, 0.35 }
+      }
+      rors = $STATOR {
+        stg = { 0.0, 1.0 }
+        camloc_root = { 0.5, 0.35 }
+        camloc_mean = { 0.5, 0.35 }
+        camloc_tip = { 0.5, 0.35 }
+      }
+    }
+
+    Table tcamber_thick(  real stg, int rors ) {
+      rors = $ROTOR {
+        stg = { 0.0, 1.0 }
+        camthick_root = { 0.0858, 0.16 }
+        camthick_mean = { 0.0858, 0.16 }
+        camthick_tip = { 0.0858, 0.16 }
+      }
+      rors = $STATOR {
+        stg = { 0.0, 1.0 }
+        camthick_root = { 0.0858, 0.16 }
+        camthick_mean = { 0.0858, 0.16 }
+        camthick_tip = { 0.0858, 0.16 }
+      }
+    }
+// DT-   
+   
+   
+   WATEdiskMTC S_Disk {
+      shape1 = "OPTIMUM"; //"OPTIMUM";
+      material.type = "Ti_17";
+      shaftRef = "WATE_LP_Shaft";
+   }
+
+   WATEframeCustom_mod S_RearFrame {
+      isFrontFrame = FALSE;
+   	
+      real material.rho(real) { return 0.1; }
+      real supportMaterial.rho(real) { return 0.1; }
+      volumeFactor = 0.05;
+      aspectRatio_in = stg1StatorAR;
+      supportThickness = 0.1;
+      gapFrameLengthRatio = 1;
+      numBlades_in = 5;
+ 
+      connectPoint = "REAR";
+      rearBearingRef = "WATE_LP_Shaft.bearing1";
+
+      WATEtowerShaft S_TowerShaft {
+         HPX = 200;
+         diamRatio = 0.9;
+      }
+   }
+   
+   real s_Wt = 0;	// Added by JSW 06/09/2008
+   void postexecute() {
+	weight = (1 + s_Wt) * weight;
+   }
+}
+
+
+//=================================================
+//                     SPLITTER
+//=================================================
+WATEsplitter_mod WATE_Splitter {
+   componentRef = "Splitter";
+   NPSSAreaFlag = "on";
+   real s_Wt = 0;	// Added by JSW 06/09/2008
+   void postexecute() {
+	weight = (1 + s_Wt) * weight;
+   }
+}
+
+
+//=================================================
+//                     DUCT6
+//=================================================
+WATEductBase WATE_Duct6 {
+   componentRef = "Duct6";
+   MNin_in = 0.3859;
+   lengthHeightRatio = 2.0;
+   radiusSettingPort = "WATE_Splitter.outPortPrimary";
+   material.type = "Ti_17";
+    
+   real s_Wt = 0;	// Added by JSW 06/09/2008
+   void postexecute() {
+	weight = (1 + s_Wt) * weight;
+   }
+}
+
+
+//=================================================
+//                       HPC
+//=================================================
+WATEaxialHPC WATE_HPC {
+   componentRef = "HPC";
+   geometryType = "ConstHubRadius";
+   calcStatorWt = TRUE;
+      
+   MNin = 0.3704;
+   MNout = 0.30;
+
+   //numStages_in = 10;
+   numVariableStages = 5;
+   stg1MaxPR = 1.397;
+   //avgLenPerStg = 4.2;
+
+   hubTipRatioIn = 0.627; 
+   //minHubRadius = 6.25; //Set this to HPC inlet hub
+
+   outletInletRR = 1.10; //only used for constant hub or tip not mean
+   radiusChangeStg = 1;
+   
+   stg1NcTip = 1600;
+   maxSpdRatio_in = 1;
+   s_Nmech = 1.0;
+   
+   bladeMaterial.type = "Ti_17";
+   bladeMaterial2.type = "Inconel_718";
+   bladeMaterial2StartStg = 6;
+   bladeSolidity = 1.1;
+   bladeVolumeFactor = 0.143;
+   stg1BladeAR = 2.50;
+   lastStgBladeAR = 1.50;
+     
+   statorMaterial.type = "Ti_17";
+   statorMaterial2.type = "Inconel_718";
+   statorMaterial2StartStg = 6;
+   statorSolidity = 1.15;
+   statorVolumeFactor = 0.44;
+   stg1StatorAR = 4.5;
+   lastStgStatorAR = 1.5;
+   rotorStatorSpacePct = 0.14;
+   
+   igvType = "VARIABLE";
+   igvSolidity = 1.54;
+   igvAR_in = 3.0;
+   caseMaterial.type ="Udimet_500";
+   outerCaseMaterial.type = "Ti_17";
+   igvMaterial.type = "Ti_17";  
+
+ // DT+
+   // BLADE TWISTS BASED ON NORMALIZED STAGE LOCATION (0.0 - 1.0)
+    Table twangle( real stg, int rors ) {
+      rors = $ROTOR {
+        stg = { 0.0, 1.0 }
+        tw_root = { 100.0, 120.0 }
+        tw_mean = { 120.0, 160.0 }
+        tw_tip = { 140.0, 175.0 }
+      }
+      rors = $STATOR {
+        stg = { 0.0, 1.0 }
+        tw_root = { 80.0, 50.0 }
+        tw_mean = { 60.0, 30.0 }
+        tw_tip = { 40.0, 10.0 }
+      }
+    }
+
+    Table tcamber(  real stg, int rors ) {
+      rors = $ROTOR {
+        stg = { 0.0, 1.0 }
+        cam_root = { 0.02, 0.1 }
+        cam_mean = { 0.02, 0.1 }
+        cam_tip = { 0.02, 0.1 }
+      }
+      rors = $STATOR {
+        stg = { 0.0, 1.0 }
+        cam_root = { 0.02, 0.1 }
+        cam_mean = { 0.02, 0.1 }
+        cam_tip = { 0.02, 0.1 }
+      }
+    }
+
+    Table tcamber_loc(  real stg, int rors ) {
+      rors = $ROTOR {
+        stg = { 0.0, 1.0 }
+        camloc_root = { 0.5, 0.35 }
+        camloc_mean = { 0.5, 0.35 }
+        camloc_tip = { 0.5, 0.35 }
+      }
+      rors = $STATOR {
+        stg = { 0.0, 1.0 }
+        camloc_root = { 0.5, 0.35 }
+        camloc_mean = { 0.5, 0.35 }
+        camloc_tip = { 0.5, 0.35 }
+      }
+    }
+
+    Table tcamber_thick(  real stg, int rors ) {
+      rors = $ROTOR {
+        stg = { 0.0, 1.0 }
+        camthick_root = { 0.0858, 0.16 }
+        camthick_mean = { 0.0858, 0.16 }
+        camthick_tip = { 0.0858, 0.16 }
+      }
+      rors = $STATOR {
+        stg = { 0.0, 1.0 }
+        camthick_root = { 0.0858, 0.16 }
+        camthick_mean = { 0.0858, 0.16 }
+        camthick_tip = { 0.0858, 0.16 }
+      }
+    }
+// DT-   
+   
+   
+   WATEdiskMTC S_Disk {
+      shape1 = "OPTIMUM";
+      shape2 = "OPTIMUM";
+      material.type = "Ti_17";
+      material2.type = "Inconel_718";
+      material2StartStg = 6;
+      shape2StartStg = 2;
+      diskBoreBladeHubRR = 0.39;
+      shaftRef = "WATE_HP_Shaft";
+   }
+      
+   real s_Wt = 0;	// Added by JSW 06/09/2008
+   void postexecute() {
+	weight = (1 + s_Wt) * weight;
+   }
+}
+
+
+//=================================================
+//                      BLD3
+//=================================================
+WATEductBase WATE_Bld3 {
+   componentRef = "Bld3";
+   MNin_in = 0.3;
+   lengthHeightRatio = 6.0;
+ 
+
+   material.type = "Udimet_700"; // "Ti_17" // error: - possible error
+   real s_Wt = 0;	// Added by JSW 06/09/2008
+   void postexecute() {
+	weight = (1 + s_Wt) * weight;
+   }
+}
+
+
+//=================================================
+//                     BURNER
+//=================================================
+WATEprimaryBurner WATE_Burner {
+   componentRef = "Burner";
+   domeType = "SINGLE";
+   Vflow = 75;
+   residenceTime = 0.0090;
+   
+   diamSettingComp = "WATE_HPC";
+   linerMaterial.type ="TD_Nickel_bar";
+   caseMaterial.type ="TD_Nickel_bar";
+
+   WATEframeIntermediate S_Frame {
+      isFrontFrame = TRUE;
+   }
+   real s_Wt = 0;	// Added by JSW 06/09/2008
+   void postexecute() {
+	weight = (1 + s_Wt) * weight;
+   }
+}
+
+
+//=================================================
+//                       HPT
+//=================================================
+WATEaxialHPT WATE_HPT {
+   componentRef = "HPT";
+   geometryType = "ConstHubRadius";
+   radiusSettingLoc = "Inlet";
+   NmechSettingComp = "WATE_HPC";
+   hasActiveCaseCooling = 1;
+   hasInterStgSealDisk = 1;
+   isFrameInFlow = 0;
+
+   MNin = 0.096;
+   MNout = 0.2804;
+
+   numStages_in = 2;
+   //avgLenPerStg = 4.7;
+   maxSpdRatio_in = 1.0;
+   outerRadiusLimit = 22;
+
+   //outletInletRR = 0.948;
+   radiusChangeStg = 1;
+
+   //loadingParam = 0.3415;
+   GEloadingParam_in = 0.803;
+
+   caseMaterial.type ="V_57";
+
+   stg1BladeAR = 2.0;
+   lastStgBladeAR = 2.60;
+   bladeSolidity = 0.8;
+   bladeVolumeFactor = 0.59;
+   bladeTaperRatio = .9;
+   bladeMaterial.type = "Rene_108";
+   real bladeMaterial.rho(real) { return 0.312; }   // Rene-N5 
+
+   stg1StatorRotorLR = 1.6;
+   lastStgStatorRotorLR = 1.7;
+   statorSolidity = 0.8;
+   statorVolumeFactor = 0.59;
+   statorMaterial.type = "Rene_108";
+   real statorMaterial.rho(real) { return 0.312; }  // Rene-N5
+
+// DT+
+    // BLADE TWISTS BASED ON NORMALIZED STAGE LOCATION (0.0 - 1.0)
+    Table twangle( real stg, int rors ) {
+      rors = $ROTOR {
+        stg = { 0.0, 1.0 }
+        tw_root = { 120.0, 100.0 }
+        tw_mean = { 160.0, 120.0 }
+        tw_tip = { 165.0, 140.0 }
+//         tw_root = { 100.0, 120.0 }
+//         tw_mean = { 120.0, 160.0 }
+//         tw_tip = { 140.0, 165.0 }
+      }
+      rors = $STATOR {
+        stg = { 0.0, 1.0 }
+        tw_root = { 50.0, 80.0 }
+        tw_mean = { 30.0, 60.0 }
+        tw_tip = { 25.0, 40.0 }
+//         tw_root = { 80.0, 50.0 }
+//         tw_mean = { 60.0, 30.0 }
+//         tw_tip = { 40.0, 25.0 }
+      }
+    }
+
+    Table tcamber(  real stg, int rors ) {
+      rors = $ROTOR {
+        stg = { 0.0, 1.0 }
+        cam_root = { 0.1, 0.02 }
+        cam_mean = { 0.1, 0.02 }
+        cam_tip = { 0.1, 0.02 }
+//         cam_root = { 0.02, 0.1 }
+//         cam_mean = { 0.02, 0.1 }
+//         cam_tip = { 0.02, 0.1 }
+      }
+      rors = $STATOR {
+        stg = { 0.0, 1.0 }
+        cam_root = { 0.1, 0.02 }
+        cam_mean = { 0.1, 0.02 }
+        cam_tip = { 0.1, 0.02 }
+//         cam_root = { 0.02, 0.1 }
+//         cam_mean = { 0.02, 0.1 }
+//         cam_tip = { 0.02, 0.1 }
+      }
+    }
+
+    Table tcamber_loc(  real stg, int rors ) {
+      rors = $ROTOR {
+        stg = { 0.0, 1.0 }
+        camloc_root = { 0.35, 0.5 }
+        camloc_mean = { 0.35, 0.5 }
+        camloc_tip = { 0.35, 0.5 }
+//         camloc_root = { 0.5, 0.35 }
+//         camloc_mean = { 0.5, 0.35 }
+//         camloc_tip = { 0.5, 0.35 }
+      }
+      rors = $STATOR {
+        stg = { 0.0, 1.0 }
+        camloc_root = { 0.35, 0.5 }
+        camloc_mean = { 0.35, 0.5 }
+        camloc_tip = { 0.35, 0.5 }
+//         camloc_root = { 0.5, 0.35 }
+//         camloc_mean = { 0.5, 0.35 }
+//         camloc_tip = { 0.5, 0.35 }
+      }
+    }
+
+    Table tcamber_thick(  real stg, int rors ) {
+      rors = $ROTOR {
+        stg = { 0.0, 1.0 }
+        camthick_root = { 0.16, 0.0858 }
+        camthick_mean = { 0.16, 0.0858 }
+        camthick_tip = { 0.16, 0.0858 }
+//         camthick_root = { 0.0858, 0.16 }
+//         camthick_mean = { 0.0858, 0.16 }
+//         camthick_tip = { 0.0858, 0.16 }
+      }
+      rors = $STATOR {
+        stg = { 0.0, 1.0 }
+        camthick_root = { 0.16, 0.0858 }
+        camthick_mean = { 0.16, 0.0858 }
+        camthick_tip = { 0.16, 0.0858 }
+//         camthick_root = { 0.0858, 0.16 }
+//         camthick_mean = { 0.0858, 0.16 }
+//         camthick_tip = { 0.0858, 0.16 }
+      }
+    }
+// DT-   
+   
+   
+   
+   WATEdiskMTC S_Disk {
+      shape1 = "HYPERBOLIC";
+      shape2 = "HYPERBOLIC";
+      material.type = "Rene_95";
+      shaftRef = "WATE_HP_Shaft";
+   }
+   WATEframeTurbineExit S_RearFrame {
+   }
+   real s_Wt = 0;	// Added by JSW 06/09/2008
+   void postexecute() {
+	weight = (1 + s_Wt) * weight;
+   }
+}
+
+
+//=================================================
+//                     DUCT11
+//=================================================
+WATEductBase WATE_Duct11 {
+   componentRef = "Duct11";
+   MNin_in = 0.2804;
+   lengthHeightRatio = 1.75;
+  
+   material.type = "Udimet_700"; //"Ti_17";
+   real s_Wt = 0;	// Added by JSW 06/09/2008
+   void postexecute() {
+	weight = (1 + s_Wt) * weight;
+   }
+}
+
+
+//=================================================
+//                       LPT
+//=================================================
+WATEaxialLPT WATE_LPT {
+   componentRef = "LPT";
+   geometryType = "ConstHubRadius";
+   radiusSettingLoc = "Inlet";
+   NmechSettingComp = "WATE_Fan";
+   hasRotorShroud = 1;
+   hasSpacerBar = 1;
+   isFrameInFlow = TRUE;//Added this may need to be a 1 or they may both work 
+
+   MNin = 0.243;
+   MNout = 0.2908;
+
+   numStages_in = 4;
+  // avgLenPerStg = 6.7;
+   maxSpdRatio_in = 1.0;
+
+   outletInletRR= 1.09;
+  // radiusChangeStg = 4.0;
+   outerRadiusLimit = 10.0;
+
+   //loadingParam = 0.205;
+   GEloadingParam_in = 1.711;
+
+   
+
+   real caseMaterial.rho(real) { return 0.3; }
+   stg1BladeAR = 3.2;
+   lastStgBladeAR = 3.8;
+   bladeSolidity = 1.42;
+   bladeVolumeFactor = 0.19;
+   bladeMaterial.type = "Rene_95";
+   bladeMaterial2.type ="Udimet_700";
+   bladeMaterial2StartStg = 3;
+   real bladeMaterial.rho(real) { return 0.313; }   // DSR-142
+
+   stg1StatorRotorLR = 1.3; 
+   lastStgStatorRotorLR = 0.85; 
+   statorSolidity = 1.11;
+   statorVolumeFactor = 0.15;
+   statorMaterial.type = "Rene_95";
+   statorMaterial2.type ="Udimet_700";
+   statorMaterial2StartStg = 3;
+   real statorMaterial.rho(real) { return 0.313; }  // DSR-142
+
+// DT+
+    // BLADE TWISTS BASED ON NORMALIZED STAGE LOCATION (0.0 - 1.0)
+    Table twangle( real stg, int rors ) {
+      rors = $ROTOR {
+        stg = { 0.0, 1.0 }
+        tw_root = { 120.0, 100.0 }
+        tw_mean = { 160.0, 120.0 }
+        tw_tip = { 165.0, 140.0 }
+//         tw_root = { 100.0, 120.0 }
+//         tw_mean = { 120.0, 160.0 }
+//         tw_tip = { 140.0, 165.0 }
+      }
+      rors = $STATOR {
+        stg = { 0.0, 1.0 }
+        tw_root = { 50.0, 80.0 }
+        tw_mean = { 30.0, 60.0 }
+        tw_tip = { 25.0, 40.0 }
+//         tw_root = { 80.0, 50.0 }
+//         tw_mean = { 60.0, 30.0 }
+//         tw_tip = { 40.0, 25.0 }
+      }
+    }
+
+    Table tcamber(  real stg, int rors ) {
+      rors = $ROTOR {
+        stg = { 0.0, 1.0 }
+        cam_root = { 0.1, 0.02 }
+        cam_mean = { 0.1, 0.02 }
+        cam_tip = { 0.1, 0.02 }
+//         cam_root = { 0.02, 0.1 }
+//         cam_mean = { 0.02, 0.1 }
+//         cam_tip = { 0.02, 0.1 }
+      }
+      rors = $STATOR {
+        stg = { 0.0, 1.0 }
+        cam_root = { 0.1, 0.02 }
+        cam_mean = { 0.1, 0.02 }
+        cam_tip = { 0.1, 0.02 }
+//         cam_root = { 0.02, 0.1 }
+//         cam_mean = { 0.02, 0.1 }
+//         cam_tip = { 0.02, 0.1 }
+      }
+    }
+
+    Table tcamber_loc(  real stg, int rors ) {
+      rors = $ROTOR {
+        stg = { 0.0, 1.0 }
+        camloc_root = { 0.35, 0.5 }
+        camloc_mean = { 0.35, 0.5 }
+        camloc_tip = { 0.35, 0.5 }
+//         camloc_root = { 0.5, 0.35 }
+//         camloc_mean = { 0.5, 0.35 }
+//         camloc_tip = { 0.5, 0.35 }
+      }
+      rors = $STATOR {
+        stg = { 0.0, 1.0 }
+        camloc_root = { 0.35, 0.5 }
+        camloc_mean = { 0.35, 0.5 }
+        camloc_tip = { 0.35, 0.5 }
+//         camloc_root = { 0.5, 0.35 }
+//         camloc_mean = { 0.5, 0.35 }
+//         camloc_tip = { 0.5, 0.35 }
+      }
+    }
+
+    Table tcamber_thick(  real stg, int rors ) {
+      rors = $ROTOR {
+        stg = { 0.0, 1.0 }
+        camthick_root = { 0.16, 0.0858 }
+        camthick_mean = { 0.16, 0.0858 }
+        camthick_tip = { 0.16, 0.0858 }
+//         camthick_root = { 0.0858, 0.16 }
+//         camthick_mean = { 0.0858, 0.16 }
+//         camthick_tip = { 0.0858, 0.16 }
+      }
+      rors = $STATOR {
+        stg = { 0.0, 1.0 }
+        camthick_root = { 0.16, 0.0858 }
+        camthick_mean = { 0.16, 0.0858 }
+        camthick_tip = { 0.16, 0.0858 }
+//         camthick_root = { 0.0858, 0.16 }
+//         camthick_mean = { 0.0858, 0.16 }
+//         camthick_tip = { 0.0858, 0.16 }
+      }
+    }
+// DT-   
+   
+   
+   WATEdiskMTC S_Disk {
+      shape1 = "OPTIMUM";
+      shape2 = "OPTIMUM";
+      material.type = "Rene_95";
+      diskBoreBladeHubRR = 0.690;
+      shaftRef = "WATE_LP_Shaft";
+   }
+   WATEframeCustom S_RearFrame{
+      material.type ="Inconel_718";
+      supportMaterial.type ="Inconel_718";
+      volumeFactor = 0.050;
+      aspectRatio_in = 1.0;
+      supportThickness = 0.1;
+      gapFrameLengthRatio = 0.2;
+      numBlades_in = 28;
+      connectPoint = "FRONT";
+      frontBearingRef = "WATE_LP_Shaft.bearing5";
+      rearBearingRef = "WATE_LP_Shaft.bearing5";
+   }
+   real s_Wt = 0;	// Added by JSW 06/09/2008
+   void postexecute() {
+	weight = (1 + s_Wt) * weight;
+   }
+}
+
+
+//=================================================
+//                     DUCT13
+//=================================================
+WATEductBase WATE_Duct13 {
+   componentRef = "Duct13";
+   MNin_in = 0.2908;
+  lengthHeightRatio = 0.5;
+   radiusSettingPort = "WATE_LPT.outPort";
+   material.type = "Udimet_700"; // "Ti_17";
+   real s_Wt = 0;	// Added by JSW 06/09/2008
+   void postexecute() {
+	weight = (1 + s_Wt) * weight;
+   }
+}
+
+
+//=================================================
+//                   CORE NOZZLE
+//=================================================
+WATEaxisymConvNozzle_mod WATE_Core_Nozz {
+   componentRef = "Core_Nozz";
+   diamSettingComp = "WATE_Duct13";
+   diamSettingLoc = "Outlet";
+   material.type = "_4340_Steel";
+   caseMaterial.type = "_4340_Steel";
+   outPort.outerRadius = 0; // originally = 14
+   LDratio = 0.27;
+   exitArea_in = 500;
+
+   WATEnozzlePlug S_Plug {
+      material.type ="Ti_6Al_4v";
+      lengthRatio = 4.0;    
+      thickness = 0.06;     
+   }
+   real s_Wt = 0;	// Added by JSW 06/09/2008
+   void postexecute() {
+	weight = (1 + s_Wt) * weight;
+   }
+}
+
+//=================================================
+//                     DUCT14
+//=================================================
+WATEductBase WATE_Duct14 {
+   componentRef = "Duct14";
+   MNin_in = 0.4272;
+   length_in = 5;
+   radiusSettingPort = "WATE_Fan.outPort";
+   real material.rho(real) { return 0.0001; }
+   real s_Wt = 0;	// Added by JSW 06/09/2008
+   void postexecute() {
+	weight = (1 + s_Wt) * weight;
+   }
+}
+
+//=================================================
+//                     DUCT15
+//=================================================
+WATEductBase WATE_Duct15 {
+   componentRef = "Duct15";
+   MNin_in = 0.4272;
+   length_in = 15.0;
+   radiusSettingPort = "WATE_Splitter.outPortSecondary";
+   real material.rho(real) { return 0.1; }
+   real s_Wt = 0;	// Added by JSW 06/09/2008
+   void postexecute() {
+	weight = (1 + s_Wt) * weight;
+   }
+}
+
+//=================================================
+//                  BYPASS NOZZLE
+//=================================================
+WATEfanAxiConvNozzle_mod WATE_Byp_Nozz {
+   componentRef = "Byp_Nozz";
+   diamSettingComp = "WATE_Duct15";
+   bypassNozzleType = "ConstHub";
+   diamSettingLoc = "Outlet";
+   outPort.outerRadius = 28;
+   LDratio = 0.625;
+   
+   //Added
+   
+   throatLocationFrac = 1;
+   real material.rho(real) { return 0.1; }
+   real caseMaterial.rho(real) { return 0.1; }
+
+   WATEprimaryThrustReverser S_ThrustReverser { 
+   } 
+   real s_Wt = 0;	// Added by JSW 06/09/2008
+   void postexecute() {
+	weight = (1 + s_Wt) * weight;
+   }
+}
+
+
+//=================================================
+//                    LP SHAFT
+//=================================================
+WATElpShaft WATE_LP_Shaft {
+   componentRef = "LP_Shaft";
+   inertiaComps = { "WATE_Fan", "WATE_LPT" };
+   limitStress = 50000;
+   diamRatio = 0.833;
+   material.type ="V_57";
+
+   burnerRef = "WATE_Burner";
+   
+   WATErollerBearingSimple bearing1 { 
+   //Added
+   diameter = .5;
+   }
+   WATEballBearingSimple bearing2 {
+   //Added 
+   diameter = .5;
+   }
+   WATErollerBearingSimple bearing5 {
+   //Added 
+   diameter = .5;
+   }
+   s_Wt = 0;	// Added by JSW 06/09/2008
+   void postexecute() {
+	weight = (1 + s_Wt) * weight;
+   }
+}
+
+
+//=================================================
+//                    HP SHAFT
+//=================================================
+WATEhpShaft WATE_HP_Shaft {
+   componentRef = "HP_Shaft";
+   isOuterShaft = 1;
+   innerShaftRef = "WATE_LP_Shaft";
+   inertiaComps = { "WATE_HPC", "WATE_HPT" };
+   limitStress = 50000;
+   diamRatio = 0.833;
+   real material.rho(real) { return 0.300; }
+
+   burnerRef = "WATE_Burner";
+   
+   WATEballBearingSimple bearing3 { 
+   //Added
+   diameter = .5;
+   }
+   WATErollerBearingSimple bearing4 { 
+   //Added
+   diameter = .5;}
+   s_Wt = 0;	// Added by JSW 06/09/2008
+   void postexecute() {
+	weight = (1 + s_Wt) * weight;
+   }
+}
+
+
+//=================================================
+//                     INLET
+//=================================================
+WATEinletMDAlowDrag_mod WATE_Inlet {
+   componentRef = "Inlet";
+   aftEngMntPortRef = "WATE_LPT.outPort";
+   MNin = 0.85;
+
+   calcStructWt = 1;   //Flag to calc inlet structure weight
+   calcFirewallWt = 1; //Flag to calc inlet fire wall weight
+
+   bypassDoorType = "NONE";
+     
+   LDratio = 0.385;
+   
+   real nacelleMaterial.rho(real) { return 0.0975; } 
+   acousticMaterial.type ="acousticComposite";
+   firewallMaterial.type ="fireWallDefault";
+
+   fanFaceToMaxNacelleArea = 45;
+
+   nacelleDeltaRadius = 17.5;  
+   acousticLinerThickness = 0.25;
+   firewallThickness = 1.25;
+   real s_Wt = 0;	// Added by JSW 06/09/2008
+   void postexecute() {
+	weight = (1 + s_Wt) * weight;
+   }
+}
+
+
+//=================================================
+//                  ENGINE MOUNT
+//=================================================
+WATEengineMount S_EngineMount {
+   mountFactor = 1;
+   ultLoadFactor = 2;
+   real s_Wt = 0;	// Added by JSW 06/09/2008
+   void postexecute() {
+	weight = (1 + s_Wt) * weight;
+   }
+}
+
+
+//=================================================
+//                   ACCESSORIES
+//=================================================
+WATEaccessories S_Accessories {
+     weight_in = 750.0;
+}
+
+//=================================================
+//             COMPONENT PORT LINKAGES
+//=================================================
+linkPorts( "WATE_Inlet.outPort",     "WATE_Fan.inPort",        "W_FS_2"  );
+linkPorts( "WATE_Fan.outPort",       "WATE_Splitter.inPort",   "W_FS_21" );
+linkPorts( "WATE_Splitter.outPortPrimary","WATE_Duct6.inPort", "W_FS_23" );
+linkPorts( "WATE_Splitter.outPortSecondary","WATE_Duct14.inPort","W_FS_13");
+linkPorts( "WATE_Duct6.outPort",     "WATE_HPC.inPort",        "W_FS_24" );
+linkPorts( "WATE_HPC.outPort",       "WATE_Bld3.inPort",       "W_FS_3"  );
+linkPorts( "WATE_Bld3.outPort",      "WATE_Burner.inPort",     "W_FS_36" );
+linkPorts( "WATE_Burner.outPort",    "WATE_HPT.inPort",        "W_FS_4"  );
+linkPorts( "WATE_HPT.outPort",       "WATE_Duct11.inPort",     "W_FS_45" );
+linkPorts( "WATE_Duct11.outPort",    "WATE_LPT.inPort",        "W_FS_48" );
+linkPorts( "WATE_LPT.outPort",       "WATE_Duct13.inPort",     "W_FS_5"  );
+linkPorts( "WATE_Duct13.outPort",    "WATE_Core_Nozz.inPort",  "W_FS_7"  );
+linkPorts( "WATE_Duct14.outPort",    "WATE_Duct15.inPort",     "W_FS_15" );
+linkPorts( "WATE_Duct15.outPort",    "WATE_Byp_Nozz.inPort",   "W_FS_17" );
+
+
+//=================================================
+//            GRAPHICAL AND TEXT OUTPUT
+//=================================================
+WATEsvgViewer svg {
+   filename = "CF34.html";
+   string svgfilename = "CF34.svg";
+   imageHeight = 500;
+   imageWidth = 900;
+}
+
+}  // end of WATEa
+
+solverSequence.remove("WATEa");
+
+WATEa { 
+   int newwateview = 1;
+   if ( newwateview == 1 ) {
+      #include <npss.wate++3.view> // For new wate++ viewers
+   }
+   else {
+      #include <npss.view_wate++>  // For viewers that mimic old Fortran WATE code
+   }
+   #include <WATE_vsp_view.npss>   // For Vehicle Sketchpad (VSP) viewers
+} 

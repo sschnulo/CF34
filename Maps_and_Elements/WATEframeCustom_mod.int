@@ -1,0 +1,825 @@
+#ifndef _WATEFRAMECUSTOM_H_
+#define _WATEFRAMECUSTOM_H_
+
+//
+// LAST INSPECTION DATE: *not inspected*
+//
+//  EXTERNAL DEPENDENCIES
+//
+//    parent.parent.parent.list()
+//    parent.parent.hasInterface()
+//    VCInterface* frontBearingRef
+//    VCInterface* outermostShaft
+//    VCInterface* rearBearingRef
+//    WATEelement* passThruComp
+//    WATEframeBase* passThruFrame
+//    WATEshaft* wateShafts
+//    inPort.axialPosition
+//    numStages
+//    stg1BladeAR
+
+extern int parent.parent.parent.hasInterface(string);
+extern int numStages;
+extern real S_TowerShaft.weight;
+
+/*  
+ *  
+ *********************************************************************/  
+class WATEframeCustom_mod extends WATEframeBase
+{
+   //FRVAL(2)
+   real solidity {
+     value = 1.0 ;    IOstatus = "input";    units = "none" ;
+     description = "Frame solidity" ;
+   }
+
+   //FRVAL(3)
+   real volumeFactor {
+     value = 0.1 ;    IOstatus = "input";    units = "none" ;
+     description = "Frame volume factor" ;
+   }
+
+   //FRVAL(4)
+   real aspectRatio_in {
+     IOstatus = "input";    units = "none" ;
+     description = "Aspect ratio of the frame 'blades'." ;
+   }
+   real aspectRatio {
+     IOstatus = "output";    units = "none" ;
+     description = "Aspect ratio of the frame 'blades'." ;
+   }
+
+   //FRVAL(5)
+   int numBlades_in {
+     IOstatus = "input";    units = "none" ;
+     description = "specifies the value of numBlades" ;
+   }
+   int numBlades {
+     IOstatus = "output";    units = "none" ;
+     description = "Number of frame 'blades'. Calculated from solidity and aspectRatio unless numBlades_in is set";
+   }
+
+   //FRVAL(7)
+   real supportThickness {
+     value = 0.15 ;    IOstatus = "input";    units = "in" ;
+     description = "Frame support material thickness" ;
+   }
+
+   //FRVAL(11)
+   real gapFrameLengthRatio {
+     value = 0.1 ;    IOstatus = "input";    units = "none" ;
+     description = "Ratio of the frame gap length to frame length. Default=0.1, but = 0.0 on rear frame of high bypass fan" ;
+   }
+
+   //FRVAL(12)
+   int isStator {
+     value = FALSE ;    IOstatus = "input";    units = "none" ;
+     description = "Indicates if frame functions as a stator. FALSE if not a stator, and TRUE if it is a stator" ;
+   }
+
+   //FRVAL(13)
+   string passThruComp {
+     IOstatus = "input";    units = "none" ;
+     description = "Component name of parent of connection pass through frame." ;
+     ptrType = "WATEelement";
+   }
+   
+   string passThruFrame {
+     ptrType = "WATEframeBase";
+   }
+   passThruFrame.hide(2);
+
+
+   Option connectPoint {
+      trigger = FALSE;
+      allowedValues = { "FRONT", "REAR"}
+      IOstatus = "input";    units = "none" ;
+      description = "Specifies whether a connecting pass through frame is a front or rear frame" ;
+   }
+
+
+   string outermostShaft {
+      description = "name of outermost shaft";
+      hide(2);
+   }
+
+   real gap;
+   real height;
+   real supportWt;
+   real caseWt;
+   real upperSupportWt;
+   real lowerSupportWt;
+   real frameWt;
+   real hubWt;
+   real lengthWithGap;
+      
+   string frontBearingRef;
+   string rearBearingRef;
+   
+   string wateShafts[];
+   wateShafts.ptrType = "WATEshaftBase";
+   
+   defaultHideLevel = 2;
+   
+   string portptrs[];
+   portptrs {
+      ptrType = "Port";
+   }   
+   int inBypassStream;
+   
+   defaultHideLevel = 0;
+
+   int isVariable {
+      description = "if TRUE, this frame is variable";
+   }
+   
+   real rhof {
+      hide(1);
+   }
+   
+   int plotFrameSupports = 0;
+  
+#ifdef WATE_LEGACY
+   WATEmaterial material;
+#else
+   WATEmaterial material { type = "_17_4PH"; }
+#endif
+   
+   WATEmaterial supportMaterial;
+   
+   Socket S_TowerShaft {
+      description = "Socket for a tower shaft";
+      socketType = "WATEtowerShaft";
+   }
+  
+  
+  /**
+   * custom frame
+   *********************************************************/    
+   void calculate()
+   { 
+      real h1; 
+      real h2; 
+      real h3; 
+      real h4; 
+      real rmin; 
+      real stglen=0.; 
+      real frontBearingRadius; 
+      real rearBearingRadius; 
+      real rfanhf; 
+      real rfanhb; 
+      real webar1; 
+      real webar2; 
+      real clff=0.; 
+      real cligv=0.; 
+      real tmp; 
+      string tmpstr;     
+
+      int i;  
+      
+      string passThruFrameSock {
+        ptrType = "Socket";
+      }
+   
+      if(frontBearingRef != "") {
+         if(frontBearingRef->axialPosition == 0.) {
+            frontBearingRef->axialPosition = inPort.axialPosition;
+         }
+      }     
+      if(rearBearingRef != "") {
+         if(rearBearingRef->axialPosition == 0.) {
+            rearBearingRef->axialPosition = outPort.axialPosition;
+         }
+      }     
+
+      if(passThruComp != "") {
+         if(passThruComp->hasInterface("WATEductBase")) {
+               passThruFrameSock = passThruComp + ".S_Frame";
+         }
+         else if(passThruComp->hasInterface("WATEcompressorBase") ||
+                 passThruComp->hasInterface("WATEturbineBase")) {
+            if(connectPoint=="FRONT") { 
+               passThruFrameSock = passThruComp + ".S_FrontFrame";
+            }
+            else { // REAR
+               passThruFrameSock = passThruComp + ".S_RearFrame";
+            }
+         }
+         else {
+            passThruFrameSock = "";
+         }
+         
+         if(passThruFrameSock != "") {
+            if(passThruFrameSock->isEmpty()) {
+               tmpstr = "passThruComp is set but Socket ";
+               tmpstr += passThruFrameSock;
+               tmpstr += " is empty";
+               throwError(tmpstr);
+            }
+            passThruFrame = passThruFrameSock + ".child";
+         }
+         else {
+            passThruFrame = ""; 
+         }       
+      }
+      else {
+         passThruFrame = ""; 
+      }
+      
+      height = 0.0;  
+      gap = 0.0;  
+      supportWt = 0.0;
+      upperSupportWt = 0.0;
+      
+      if(aspectRatio_in == 0.) {
+        if(parent.parent.parent.hasInterface("WATEductBase")) {
+           aspectRatio = 1.0;
+        }
+        else {
+           aspectRatio = stg1BladeAR;
+        }
+      }
+      else {
+         aspectRatio = aspectRatio_in;
+      }
+
+      height = tipRadius-hubRadius;
+      if(numBlades_in == 0) { 
+         numBlades = 2.*PI*tipRadius*solidity*aspectRatio/height; 
+      } 
+      else {
+         numBlades = numBlades_in;
+      }
+
+      if(material.type=="") {
+         rhof =  0.12;
+      }
+      else {
+         rhof = material.rho(500);
+      }
+
+      if(!isFrontFrame && parent.parent.parent.hasInterface("WATEhiBypassFan")) { 
+         gapFrameLengthRatio = 0.0; 
+      } 
+
+      real volume = volumeFactor*height*height*height/(aspectRatio*aspectRatio);
+      weight = volume*rhof*numBlades;
+
+//   get weight of tower shaft if present in frame
+//
+      if(!S_TowerShaft.isEmpty()) {
+         S_TowerShaft.child.execute(); 
+      } 
+
+//
+//jjc calculate frame related lengths
+//
+      length = height/aspectRatio;
+      if(isStator) { 
+         gap = 0.0; 
+      } 
+      else {
+         gap = length*gapFrameLengthRatio; 
+      }
+//
+//jjc add 20% to frame weight if variable and include weight of flap
+//jjc  account for variable frames (add weight for actuators & ring)
+//
+      real ha;
+      lengthWithGap = length + gap;
+      
+      if(isVariable) {
+        weight *= 2.0;
+        ha = 0.5 * lengthWithGap;  
+        if(ha < 1.0) { 
+           ha = 1.0; 
+        } 
+        else if(ha > 3.0) { 
+           ha = 3.0; 
+        } 
+        weight += ((numBlades*(PI*.25*.3*.3*lengthWithGap*lengthWithGap*ha+
+                  .1*.25*.75*lengthWithGap)+
+                  (.5*.5-.3*.3)*2.*PI*(tipRadius+ha))*rhof);
+      }
+      
+
+//
+//jjc get lengths and radii of bearings if present
+//
+      
+      //??? h1 appears to be the distance between the front of the
+      //    component and the front bearing?
+      //??? h2 is the distance between the rear bearing and the back end
+      //    of the component?
+      real tmp2;
+      if(isFrontFrame) {
+        if(frontBearingRef != "") {
+          tmp = frontBearingRef->axialPosition;
+          tmp2 = inPort.axialPosition;
+          h1 = abs(tmp2-tmp);
+        }
+        else {
+          h1 = 0.0;
+        }
+        if(rearBearingRef != "") {
+          tmp = rearBearingRef->axialPosition;
+          tmp2 = inPort.axialPosition;
+          h2 = abs(tmp2+length-tmp); 
+        }
+        else {
+          h2 = 0.0;
+        }
+//
+//jjc store values of x & r for frames for later use in calculating
+//jjc support weight and for plotting.
+//
+        frontAxialPosition = inPort.axialPosition; 
+        backAxialPosition = frontAxialPosition+length; 
+        
+
+        if(parent.parent.parent.hasInterface("WATEhiBypassFan") || inBypassStream) {
+           frontOuterRadius = hubRadius; 
+           backOuterRadius = hubRadius; 
+        }
+        else {
+           frontOuterRadius = tipRadius; 
+           backOuterRadius = tipRadius; 
+        }
+      }
+      else { // we're a rear frame
+        stglen = 0.0;
+        if(parent.parent.parent.hasInterface("WATEhiBypassFan")) {
+          stglen = bypassLen_stg[numStages-1];
+          if(isStator) { 
+             tmp = statorLen_stg[numStages-1]; 
+             stglen -= tmp; 
+          } 
+        }
+        else if(parent.parent.parent.hasInterface("WATEaxialTurbine")) {
+          for(i=0; i<numStages; ++i) {
+             tmp = length_stg[i];
+             stglen += tmp;
+          }         
+        }
+        else if(parent.parent.parent.hasInterface("WATEaxialCompressor")) {
+          for(i=0; i<numStages; ++i) {
+             tmp = length_stg[i];
+             stglen += tmp;
+          }         
+           cligv = parent.parent.parent.igvLength;
+           clff = parent.parent.parent.frontFrameLength;
+        }
+        
+        tmp = 0.;
+        if(frontBearingRef != "") {
+          tmp = frontBearingRef->axialPosition;
+          h1 = abs(inPort.axialPosition+clff+cligv+stglen+gap-tmp); 
+        }
+        else {
+          h1 = 0.0;
+        }
+        if(rearBearingRef != "") {
+          h2 = abs(inPort.axialPosition+clff+cligv+stglen+gap+length-tmp); 
+        }
+        else {
+          h2 = 0.0;
+        }
+//
+//jjc store values of x & r for frames for later use in calculating
+//jjc support weight and for plotting.
+//
+        frontAxialPosition = inPort.axialPosition+clff+cligv+stglen+gap;  
+        backAxialPosition = frontAxialPosition+length;
+
+        if(parent.parent.parent.hasInterface("WATEhiBypassFan") || inBypassStream) {
+          frontOuterRadius = hubRadius;  
+          backOuterRadius = hubRadius;  
+        }
+        else {
+          frontOuterRadius = tipRadius;  
+          backOuterRadius = tipRadius;  
+        }
+      }
+
+      real dshmax = outermostShaft->outerDiameter;
+      rmin=1.2*dshmax*0.5;
+      if(frontBearingRef != "") {
+        frontBearingRadius = frontBearingRef->bearingCenterRadius; 
+      }
+      else {
+        if(passThruFrame != "") {
+           frontBearingRadius = passThruFrame->frontOuterRadius; 
+        } 
+        else {
+           frontBearingRadius = rmin;
+        }
+      }
+      if(rearBearingRef != "") {
+        rearBearingRadius = rearBearingRef->bearingCenterRadius;
+      }
+      else {
+        if(passThruFrame != "") { 
+           rearBearingRadius = passThruFrame->backOuterRadius; 
+        }
+        else {
+           rearBearingRadius = rmin;
+        } 
+      }
+//
+//jjc calculate weight of frame supports
+//
+//jjc no upper supports if frame is in front of main fan
+//jjc no upper supports if frame is in front of fanh component
+//jjc no upper supports if frame is connected to another frame
+
+      real supportDensity;
+      if(supportMaterial.type=="") {
+         supportDensity = rhof;
+      }
+      else {
+         supportDensity = supportMaterial.rho(500);
+      }
+
+      real passThruFrontAxialPos;
+      real passThruBackAxialPos;
+      
+      if(passThruComp != "") {
+        rfanhf = 0.;
+        rfanhb = 0.;
+        passThruFrontAxialPos = 0.;
+        passThruBackAxialPos = 0.;
+        
+        if(passThruComp->hasInterface("WATEhiBypassFan") || 
+              (!(parent.parent.parent.hasInterface("WATEhiBypassFan")) && ! inBypassStream)) {
+           if(passThruFrame != "") {
+              rfanhf = passThruFrame->frontOuterRadius;
+              rfanhb = passThruFrame->backOuterRadius; 
+              passThruFrontAxialPos = passThruFrame->frontAxialPosition;
+              passThruBackAxialPos = passThruFrame->backAxialPosition;
+           }
+           if(isFrontFrame) { 
+              h3 = abs(inPort.axialPosition-passThruFrontAxialPos); 
+              h4 = abs(inPort.axialPosition+length-passThruBackAxialPos);
+           }
+           else { // we're a rear frame
+              h3=abs(inPort.axialPosition+clff+cligv+stglen+gap-passThruFrontAxialPos); 
+              h4=abs(inPort.axialPosition+clff+cligv+stglen+gap+length-passThruBackAxialPos);
+           }
+           webar1 = PI*sqrt((rfanhf-tipRadius)**2+h3*h3)*(tipRadius+rfanhf);
+           webar2 = PI*sqrt((rfanhb-tipRadius)**2+h4*h4)*(tipRadius+rfanhb);
+           upperSupportWt = (webar1+webar2)*supportThickness*supportDensity;
+        }
+        else {
+          upperSupportWt = 0.0;
+        }
+      }
+      webar1 = PI*sqrt((hubRadius-frontBearingRadius)**2+h1*h1)*
+                   (hubRadius+frontBearingRadius);
+      if(parent.parent.parent.hasInterface("WATEaxialLPT") || parent.parent.parent.hasInterface("WATEaxialHPT")) {
+         webar1 = webar1*0.5;
+      }
+      webar2 = PI*sqrt((hubRadius-rearBearingRadius)**2+h2*h2)*(hubRadius+rearBearingRadius);
+      
+//
+//jjc no lower supports if frame is in a fanh component
+//jjc that is connected to another frame.  the weight will be calculated
+//jjc in the connecting frame support weight.  this was done because
+//jjc the fanh component is calculated ahead of any connecting components
+//
+      if(passThruFrame != "" && parent.parent.parent.hasInterface("WATEhiBypassFan")) { 
+         lowerSupportWt = 0.0; 
+      } 
+      else {
+         lowerSupportWt = (webar1+webar2)*supportThickness*supportDensity;
+      }
+      caseWt = 2.*PI*tipRadius*length*supportDensity*supportThickness;
+      hubWt = 2.*PI*hubRadius*length*supportDensity*supportThickness;
+      supportWt = upperSupportWt+lowerSupportWt+caseWt+hubWt;
+      frameWt = weight;
+
+      weight += supportWt;
+      if(!S_TowerShaft.isEmpty()) {
+         weight += S_TowerShaft.weight;
+      }
+   } // end calculate
+      
+   
+  /**
+   * perform any setup steps that require the entire model to 
+   * be in place, e.g., setting up MaxSavers for all Shaft
+   * speeds and finding the outermost shaft
+   *********************************************************/    
+   void doSetup()
+   {
+      int i,itmp;
+      
+      if(wateShafts.entries() == 0) {
+         wateShafts = parent.parent.parent.parent.list("WATEshaftBase",1);
+      }
+      
+      for(i=0; i<wateShafts.entries(); ++i) {
+         itmp = wateShafts[i]->isOuterShaft;
+         if(itmp != 0) {
+            outermostShaft = wateShafts[i];
+         }
+      }
+      
+      if(outermostShaft == "") {
+         error("outermostShaft is blank. One WATEshaftBase in the model must have isOuterShaft set to TRUE");
+      }
+   }
+     
+   
+  /**
+   *
+   *********************************************************/    
+   void calcGeometry() 
+   {
+      if(parent.parent.parent.hasInterface("WATEcompressorBase") ||
+            parent.parent.parent.hasInterface("WATEturbineBase")) {
+         if(isFrontFrame) { 
+            calcFrontFrameGeometry(); 
+         } 
+         else { 
+            calcRearFrameGeometry(); 
+         } 
+      }
+   }   
+   
+   
+  /**
+   *
+   *********************************************************/    
+   void calcFrontFrameGeometry() {
+      real x[4],y[4],xaray[4],yaray[4];
+      real xaray2[4],yaray2[4];
+      real xx[4],yy[4];
+      int ii;
+      
+      string ref;
+      real xm1,xm2,b1,b2;
+           
+      real sx0 = inPort.axialPosition; // tleng(idn1) - aleng(i);
+      real sy0 = inPort.innerRadius; //ri(1,iup1);
+      real parLen = parent.parent.length;
+      real sy1 = inPort.outerRadius; //ro(1,iup1);
+      real sy2 = outPort.outerRadius; //ro(2,idn1);      
+      real sy6 = outPort.innerRadiusDwn; //ri(2,idn1);
+      
+//     shade front frame.
+      if(length > 0.) {
+        xm1 = (sy6-sy0)/parLen;
+        b1 = sy0-xm1*sx0;
+        xm2 = (sy2-sy1)/parLen;
+        b2 = sy1-xm2*sx0;
+      
+        
+        //??? I've modified this because it seems to me that the frame
+        // should be drawn according to it's frontAxialPosition and its
+        // length. If the frame has a gap, that should not affect the drawing
+        // of the frame itself, but rather the drawing of objects that come
+        // after the frame
+        xaray[0] = frontAxialPosition;
+        xaray[1] = xaray[0];
+        xaray[2] = frontAxialPosition+length;
+        xaray[3] = xaray[2];
+                 
+        yaray[0] = sy0; 
+        yaray[1] = sy1; 
+        yaray[2] = xm2*length + sy1;//xm2 * xaray[2] + (sy1-xm2*sx0); //b2;                   
+        yaray[3] = sy0;
+        
+        setStyle("fill: yellow;"); 
+        addPolygon(xaray,yaray,drawDepth,1);         
+        setStyle(""); 
+//
+//  draw lines representing frame supports from frame to bearing
+//  location if present, otherwise from frame to shaft radii
+//
+        if(passThruComp=="") {
+          if (plotFrameSupports) {
+             drawFrameSupports(xaray,yaray);
+           }
+        }
+//
+//  the following lines added to variable flaps for variable
+//  front frames only
+//
+        if(isVariable) {
+           xaray2[0] = xaray[3]+0.025*length;
+           xaray2[1] = xaray[2]+0.025*length;
+           xaray2[3] = xaray2[0];
+           yaray2[3] = xm1 * xaray2[3] + b1;
+           if(gap> 0) { 
+              xaray2[2] = xaray2[1]+0.5*(length-gap); 
+           } 
+           else {
+              xaray2[2] = xaray2[1]+0.5*(length - spacerLen_stg[0]);
+           }
+           yaray2[2] = xm2 * xaray2[2] + b2;
+           
+           setStyle("fill: yellow;");
+           addPolygon(xaray2,yaray2,drawDepth,1);
+           setStyle("");
+        
+//
+//jjc  the following lines added to draw actuators for variable
+//jjc  front frames only
+//
+           real hite = 1.9;
+           real ringThk = contRingRadialThickness;
+           int numContained = numContainedStages;
+           if(hite<ringThk && numContained>0) { 
+              hite = ringThk + 1.0; 
+           } 
+           
+           xx[0] = xaray2[0]; 
+           yy[0] = xm2 * xx[0] + b2;
+           xx[1] = xx[0];
+           yy[1] = yy[0] + hite;
+           xx[2] = xx[0] + 1.0;
+           yy[2] = yy[1];
+           xx[3] = xx[2];
+           yy[3] = yy[2] - 0.25;
+           xx[4] = xx[3] + 0.5;
+           yy[4] = yy[3];
+           xx[5] = xx[4];
+           yy[5] = yy[4] + 0.5;
+           xx[6] = xx[5] - 0.5;
+           yy[6] = yy[5];
+           xx[7] = xx[2];
+           yy[7] = yy[2];
+           addPolyLine(xx,yy,drawDepth,1);  
+        }
+      }   
+   }
+   
+   
+   
+  /**
+   *
+   *********************************************************/    
+   void calcRearFrameGeometry() {
+      real xaray[4],yaray[4];
+           
+      
+      if(parent.parent.parent.hasInterface("WATEhiBypassFan")) {
+         real parLen = parent.parent.parent.length;      
+         real sx2 = inPort.axialPosition + parLen;
+         real sy2 = outPort.outerRadius; //ro(2,idn1);      
+
+         string ref = splitterRef+".outPortSecondary";
+         real sy3 = ref->outerRadiusDwn;
+
+         real xm2 = (sy3-sy2)/(bypassLength-parLen);
+         real b2 = sy2-xm2*sx2;
+         xaray[0] = frontAxialPosition+gap;
+         xaray[1] = xaray[0];
+         xaray[2] = xaray[0]+length;
+         xaray[3] = xaray[2];
+         yaray[0] = ref->innerRadiusDwn;
+         yaray[1] = xm2 * xaray[1] + b2;
+         yaray[2] = sy3;
+         yaray[3] = yaray[0];
+      }
+      else {
+         xaray[0] = outPort.axialPosition-length;//frontAxialPosition+gap;
+         xaray[1] = xaray[0];
+         xaray[2] = xaray[0]+length;
+         xaray[3] = xaray[2];
+         yaray[0] = outPort.innerRadius; //hubRadius_stg[numStages-1]; //ristage(nstag(i)+1,i);
+         yaray[1] = outPort.outerRadius; //tipRadius_stg[numStages-1]; //sy(2);
+         yaray[2] = outPort.outerRadiusDwn; //ro(2,idn1);
+         yaray[3] = outPort.innerRadiusDwn; //ri(2,idn1);
+      }
+ 
+      setStyle("fill: yellow;");  
+      addPolygon(xaray,yaray,drawDepth,1); 
+      setStyle("");    
+      
+//
+//  draw lines representing frame supports from frame to bearing
+//  location if present, otherwise from frame to shaft radii
+//
+      if(plotFrameSupports) {
+         drawFrameSupports(xaray,yaray);
+      }
+   }
+   
+   
+  /**
+   *
+   *********************************************************/    
+   void calcDuctFrameGeometry(real xdf[], real ydf[]) 
+   { 
+      int i;
+      real x[] = xdf;
+      real y[] = ydf;
+      
+      setStyle("fill: yellow;"); 
+      addPolygon(x,y,drawDepth,1); 
+      setStyle("");  
+      
+//
+//  draw lines representing frame supports from frame to WATEhiBypassFan or WATEductBase
+//  component (special case - upper supports drawn here)
+//
+     real xx,yy;
+     if(passThruFrame != "") {
+       if(passThruFrame->hubRadius > hubRadius) {
+          xx = passThruFrame->frontAxialPosition;
+          yy = WATE_Duct15.inPort.innerRadius; //passThruFrame->hubRadius;
+          addLine(xdf[1],ydf[1],xx,yy,drawDepth,1);
+          xx = passThruFrame->backAxialPosition;
+          addLine(xdf[2],ydf[2],xx,yy,drawDepth,1);
+       }
+     }
+     
+   }
+   
+   void drawFrameSupports(real xaray[],real yaray[]) {
+      real x[4],y[4];
+      string ref;
+      real shrad=0.;
+      int ii;
+      
+      x[0] = xaray[0];
+      y[0] = yaray[0];
+      x[2] = xaray[3];
+      y[2] = yaray[3];
+
+      if(frontBearingRef != "") {
+        x[1] = frontBearingRef->axialPosition;
+        y[1] = frontBearingRef->diameter/2.0;
+      }
+      else {
+        ref = parent.parent.parent.S_Disk.child.shaftRef;
+        shrad = ref->outerDiameter/2.0; // dshaf(iwmec[2,nsh])/2.0;
+        x[1] = x[0];
+        y[1] = 1.2*shrad;
+      }
+
+      if(rearBearingRef != "") {
+        x[3] = rearBearingRef->axialPosition;
+        y[3] = rearBearingRef->diameter/2.0;
+      }
+      else {
+        ref = parent.parent.parent.S_Disk.child.shaftRef;
+        shrad = ref->outerDiameter/2.0; // dshaf(iwmec[2,nsh])/2.0;
+        x[3] = x[2];
+        y[3] = 1.2*shrad;
+      }
+
+      addLine(x[0],y[0],x[1],y[1],drawDepth,1);
+      addLine(x[2],y[2],x[3],y[3],drawDepth,1);
+   }
+   
+   
+   /**
+    *
+    ***********************************************************/
+   int verify() {
+      // look upstream for a Splitter and figure out if we're in the
+      // bypass stream
+      string old;
+      string wateEptr = parent.parent.parent.getPathName();
+      string visited[] = { };
+      string pnames[];
+      
+      inBypassStream = 0;
+      
+      while(1) {
+         old = wateEptr;
+         
+         if(wateEptr->hasInterface("WATEelement")) {
+            if(wateEptr->hasInterface("WATEmixerBase")) {
+               // we're downstream of Mixer, so not in bypass stream
+               break;
+            }
+            pnames = wateEptr->getVal("wateInPortNames");
+            if(pnames.entries()==0) { break; }
+            portptrs = pnames[0]->getLinkedPortName();
+            if(portptrs.entries()==0) { break; }
+            wateEptr = portptrs[0]->getParentName();
+            
+            if(wateEptr->hasInterface("WATEsplitter")) {
+               if(portptrs[0]->getName() == "outPortSecondary") {
+                  inBypassStream = 1;
+               }
+               break;
+            }
+         }
+         else { break; }
+         
+         if(visited.contains(wateEptr)) { break; }
+         else { visited.append(wateEptr); }
+      }
+      
+      return 1;
+   }
+   
+} // end class
+
+
+#endif
+

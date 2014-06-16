@@ -1,0 +1,305 @@
+
+#ifndef WATEINLETMDALOWDRAG
+#define WATEINLETMDALOWDRAG
+
+//
+// LAST INSPECTION DATE: *not inspected*
+//
+//  EXTERNAL DEPENDENCIES
+//
+
+/**
+ * subsonic inlet
+ ******************************************************************/
+class WATEinletMDAlowDrag_mod extends WATEinletBase_mod
+{
+   //DESVAL(3)
+   real WcMax {
+     IOstatus = "input"; units = "lbm/sec";
+     description = "Maximum corrected airflow. Default is the cycle value";
+   }
+
+   //DESVAL(4)
+   real WcCruise {
+     IOstatus = "input"; units = "lbm/sec";
+     description = "Cruise corrected airflow. Default is WcMax";
+   }
+
+   //DESVAL(1)
+   real MNin {
+     value = 0.8; IOstatus = "input"; units = "none";
+     description = "Cruise Mach number. Default = 0.8";
+   }
+   
+   defaultHideLevel = 2;
+   real ath;
+   real ahit;
+   real ahib;
+   real rth;
+   real rhit;
+   real rhib;
+   real xl;
+   real bt; 
+   real bb; 
+   real mfr;
+   real afas;
+   real amaxahi;
+   real rmaxrhi;
+   defaultHideLevel = 0;
+      
+   def_length = 0.4;
+   max_length = 0.4;
+   in_length = 0.4;
+
+   wall_x = {  0.01, 0.02,0.03,0.06, 0.10,1.0, 0, 0 }
+   wall_y = { .1302,.1839,.225,.317,.4071,1.0, 0, 0 }
+
+
+   nacellePts = 9;
+
+   compressorRef.ptrType = "WATEaxialCompressor";
+   
+   MaxSaver max_Wc {
+      var = "Fl_I.Wc";
+   }
+   
+  /**
+   * 
+   ******************************************************************/
+   void calculate() {
+      if(WcMax  ==  0.) { WcMax = max_Wc.val; } 
+      if(WcCruise  ==  0.) { WcCruise = WcMax; }
+
+      WATEinletBase_mod::calculate();
+   }
+
+  /**
+   * 
+   ******************************************************************/
+   real getInletWt() {
+      return 0.0;  
+   }
+
+
+      
+   /*
+    * 
+    ******************************************************************/
+   void calcBulkheadWt() {
+      bulkheadWt = PI*(maxrad**2-yw[0]**2)*0.1*0.16;
+   }
+   
+  /**
+   * 
+   ******************************************************************/
+   void calcDesignParams() { 
+      ath = WcMax*1.015*1.03/48.0;
+      ahit = 1.2 * ath;
+      ahib = 1.2389 * ath;
+      rth = sqrt(ath/PI)*12.0;
+      rhit = sqrt(ahit/PI)*12.0;
+      rhib = sqrt(ahib/PI)*12.0;
+      xl = LDratio * 2.0 * outPort.outerRadiusDwn;
+      bt = rhit - rth; 
+      bb = rhib - rth; 
+      at = 2.0*bt;
+      ab = 2.0*bb;
+      mfr = WcCruise/47.59/((ahit+ahib)/2.0);
+      afas = MNin*(MNin*(66.288*MNin-146.266)+108.56)-26.013;
+      amaxahi = afas*(1.0 - mfr)+1.0;
+      rmaxrhi = sqrt(amaxahi);
+   }
+     
+      
+   /*
+    * set up the array of x and y coords for the wall plot
+    ******************************************************************/
+   void calcWallPts() {
+       int i,j,k;
+       
+       string bldLenStr {
+          ptrType = "real[]";
+       }      
+
+       xw[0] = 0.0;
+       yw[0] = diameter/2.0;
+       bldLenStr = compressorRef+".bladeLen_stg";
+       xw[1] = xw[0] - bldLenStr->getMember(0); // xclr(1,inum);
+       yw[1] = yw[0];
+       xw[2] = -xl;
+       yw[2] = rth;
+
+	
+       for(j=0; j<5; ++j) { // do j = 1,5;
+         xw[3+j] = -xl - (at/5.0)*(j+1);
+         yw[3+j] = rth+bt-bt/at*sqrt(at*at-(at/5.0*(j+1))**2 + 0.0000001);
+       }
+
+       k = 0;
+       for(j=5; j>=1; --j,++k) { // do j = 5,1,-1;
+         xw2[k] = -xl - (ab/5.0)*j;
+         yw2[k] = -rth-bb+bb/ab*sqrt(ab*ab-(ab/5.0*j)**2);
+       }
+
+       xw2[5] = xw[2];
+       yw2[5] = -yw[2];
+       xw2[6] = xw[1];
+       yw2[6] = -yw[1];
+       xw2[7] = xw[0];
+       yw2[7] = -yw[0];
+    }
+    
+    
+  /**
+   * 
+   ******************************************************************/
+   void calcGeometry() {
+      
+      calcDesignParams();   
+
+   //
+   //jjc calculate the paramaters needed for subsonic inlet design
+   //
+      int i,j,k;
+      real x;
+      
+      if(1.0/rmaxrhi  >  0.85){
+        afas = MNin*(MNin*(52.609*MNin-115.233)+85.284)-20.390;
+        amaxahi = afas*(1.0 - mfr)+1.0;
+        rmaxrhi = sqrt(amaxahi);
+      }
+      rmaxt = diameter/2.0 + 5.0;
+      if(rmaxrhi*rhit - diameter/2.0  >  5.0) { rmaxt = rmaxrhi * rhit; }
+      real rmaxb = diameter/2.0 + 5.0;
+      if(rmaxrhi*rhib - diameter/2.0  >  5.0) { rmaxb = rmaxrhi * rhib; }
+      if(maxNacelleArea  >  0.) { 
+         rmaxt = maxrad;  
+         rmaxb = maxrad; 
+      }
+      x = (-1.92*(1.0/rmaxrhi)+2.088)*2.0*rmaxb;
+
+  //
+  //jjc set up the arrays of x and y coords for the plotting routine.
+  //
+      
+     int wallPts = wall_x.entries();
+     
+     calcWallPts();      
+      
+     real yt = rmaxt - rhit;
+     real yb = rmaxb - rhib;
+     
+     xn[0] = xw[xw.entries()-1];
+     yn[0] = yw[yw.entries()-1];
+     for(i=1; i<wallPts; ++i) { // do i = 2,6;
+       xn[i] = xn[0] + wall_x[i-1]*x;
+       yn[i] = yn[0] + wall_y[i-1]*yt;
+     }
+     xn[6] = xn[0] + wall_x[5]*x;
+     yn[6] = rmaxt;
+     xn[7] = fanFaceToMaxNacelleArea;
+     yn[7] = maxrad;
+
+     real rcent = nozzleRef->outerCaseInletRR*nozzleRef->inPort.outerRadius; // rcent[ii];
+     real rtmp = nozzleRef->inPort.outerRadius;
+     if(rcent  <= rtmp) {
+        xn[8] = nozzleRef->outPort.axialPosition; // tleng[idn1];
+        yn[8] = nozzleRef->outPort.outerRadius; // ro[2,idn1];
+     }
+     else {
+        xn[8] = nozzleRef->inPort.axialPosition; // tleng[iup1];
+        yn[8] = rcent; 
+     }
+
+     xn2[0] = xw2[0];
+     yn2[0] = yw2[0];
+     for(i=1; i<wallPts; ++i) { // do i = 11,15;
+       xn2[i] = xn2[0] + wall_x[i]*x;
+       yn2[i] = yn2[0] - wall_y[i]*yb;
+     }
+     xn2[6] = xn2[0] + wall_x[5]*x;
+     yn2[6] = -rmaxb;
+     xn2[7] = fanFaceToMaxNacelleArea;
+     yn2[7] = -maxrad;
+
+     rcent = nozzleRef->outerCaseInletRR*nozzleRef->inPort.outerRadius; // rcent[ii];
+     rtmp = nozzleRef->inPort.outerRadius;
+     if(rcent <= rtmp) {
+        xn2[8] = nozzleRef->outPort.axialPosition; // tleng[idn1];
+        yn2[8] = nozzleRef->outPort.outerRadius; // ro[2,idn1];
+        yn2[8] = -yn2[8]; // to get rid of ambiguity warning
+     }
+     else {
+        xn2[8] = nozzleRef->inPort.axialPosition; // tleng[iup1];
+        yn2[8] = -rcent;
+     }
+     
+     addPolyLine(xw,yw,drawDepth);
+     addPolyLine(xw2,yw2,drawDepth);
+     addPolyLine(xn,yn,drawDepth);     
+     addPolyLine(xn2,yn2,drawDepth);
+     
+     drawCenterBody();
+   }
+   
+    
+
+  /**
+   * 
+   ******************************************************************/
+   void calcInletCowlWeight() {  
+      int i;
+      real ta = 0.0;
+      mostFwdToEngFFLength = (mostFwdToEngFFLength*12.0+(at + ab)/2.0)/12.0;
+      real sl,sa;
+      real rhonac = nacelleMaterial.rho(500);
+
+      calcGeometry();
+      
+      for(i=0; i<2; ++i) { // do i = 1,2;
+        sl = sqrt((xw[i]-xw[i+1])**2 + (yw[i]-yw[i+1])**2);
+        sa = PI*(yw[i]+yw[i+1])*sl;
+        ta += sa*rhonac*nacelleThickness;
+      }
+      for(i=2; i<7; ++i) { // do i = 3,7;
+        sl = sqrt((xw[i]-xw[i+1])**2 + (yw[i]-yw[i+1])**2);
+        sa = PI*(yw[i]+yw[i+1])*sl;
+        ta += sa*0.1*0.102;
+      }
+      for(i=0; i<5; ++i) { // do i = 1,5;
+        sl = sqrt((xn[i]-xn[i+1])**2 + (yn[i]-yn[i+1])**2);
+        sa = PI*(yn[i]+yn[i+1])*sl;
+        ta += sa*0.1*0.102;
+      }
+
+      sa = PI*(yn[5]+yn[6])*sqrt((xn[5]-xn[6])**2 + (yn[5]-yn[6])**2);
+      ta += sa*rhonac*nacelleThickness;
+      sa = PI*(yn[6]+maxrad)*sqrt((xn[6])**2 + (yn[6]-maxrad)**2);
+      ta += sa*rhonac*nacelleThickness;
+      inletCowlWt = ta;
+
+      //
+      //jjc calculate nacelle/cowl weight - inlet acoustic material & anti-ice
+      //
+      ta = 0.0;
+      for(i=0; i<2; ++i) { // do i = 1,2;
+        sa = PI*(yw[i]+yw[i+1])*sqrt((xw[i]-xw[i+1])**2 + (yw[i]-yw[i+1])**2);
+        ta = ta + sa;
+      }
+      acousticWt = ta*acousticLinerThickness*acousticMaterial.rho(500);
+      antiIceWt= 2*PI*(mostFwdToEngFFLength*12.0+at)*0.0286;
+      if(calcAntiIceWt) { antiIceWt += 2.0*PI*PI*yn[0]*0.0286; }
+   }
+
+   
+  /**
+   * 
+   ******************************************************************/
+   real get_lduct() {   
+      return 0.0;
+   }
+}
+
+
+#endif
+

@@ -1,0 +1,704 @@
+
+// *************************************************************************
+// * NASA Glenn Research Center
+// * 21000 Brookpark Rd
+// * Cleveland, OH 44135
+// *
+// * NPSS NICE-1 Proprietary Information
+// * Do not release outside of the NICE-1 Government/Industry team members
+// *************************************************************************
+//
+//  Modified from NEPP Coolit routine by J. Kretzing - 12/1999
+//---------------------------------------------------------------------
+#include <InterpIncludes.ncp>
+
+class CoolIt extends Subelement {
+
+  //------------------------------------------------------------
+  //     ******* DOCUMENTATION *******
+  //------------------------------------------------------------
+  
+  title =
+  "   	   COOLING ELEMENT
+
+";
+
+  description =
+"
+This element will calculate the amount of cooling flow required to cool
+a turbine.  The calculations are based on input metal temperature and 
+effectiveness.  It will also calculate an efficiency delta based on the 
+updated cooling flow.  These calculations are based on the NEPP COOLIT 
+calculations.  The basic relation used to determine the cooling amount is:
+   cooling flow = 0.022 * ( phi/1-phi )^1.25 * xf * flow
+";
+
+  usageNotes =
+"
+This element is designed to work in conjuction with a standard NPSS 
+turbine element.  It will determine the amount of flow that it thinks
+is needed to cool the turbine.  It is up the to user to take this 
+information and feed it back into the cycle deck.  This is probably best
+done using a solver balance to vary bleed flow fractions so that the 
+calculated/required bleed flows match the actual bleed flows.
+
+";
+
+  
+  //------------------------------------------------------------
+  //     ******* SETUP VARIABLES ********
+  //------------------------------------------------------------
+
+  socketRequired = 0;
+  int nStages {
+    value = 1;
+    IOstatus = "input";
+    description = "Number of stages (maximum = 10)"; 
+  }
+
+
+  real bladeFlow[]= { 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0. };
+  
+  real vaneFlow[]  = { 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0. };
+  
+  real delBlade[] = { 0., 0., 0., 0., 0., 0., 0., 0., 0., 0. };
+
+
+  real delVane[] = { 0., 0., 0., 0., 0., 0., 0., 0., 0., 0. };
+
+
+  real desBladeTemp[] ={ 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0. };
+
+
+  real desVaneTemp[] = { 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0. };
+
+
+  real factBlade[] = { 0., 0., 0., 0., 0., 0., 0., 0., 0., 0. };
+
+  real factVane[] = { 0., 0., 0., 0., 0., 0., 0., 0., 0., 0. };
+
+
+  real maxBladeTemp[] = { 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0. };
+
+  real maxVaneTemp[] = { 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0. };
+
+  real bladeTemp[] = { 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0. };
+
+  real vaneTemp[] = { 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0. };
+
+  real bleedFrac {
+    value = 0;
+    description = "total bleed flow / turbine inlet flow"; 
+  }
+
+  real bleedError {
+    value = 0;
+    IOstatus = "output";
+    units = "NONE";
+    description = "(sum of bladeFlow and vaneFlow arrays) - 1."; 
+  }
+
+
+  real eff4 {
+    value = 0;
+    IOstatus = "output";
+    description = "Thermo efficiency of the cooled turbine"; 
+  }
+
+  real FARcool {
+    value = 0;
+    IOstatus = "input";
+    description = "FUEL/AIR ratio of the cooling flow"; 
+  }
+
+  real FARin {
+    value = 0;
+    IOstatus = "input";
+    description = "turbine inlet Fuel/Air ratio"; 
+  }
+
+  real flowIn {
+    value = 0;
+    IOstatus = "input";
+    units = "lbm/sec";
+   description = "turbine inlet flow (lbm/sec)"; 
+  }
+
+  real gammaIn {
+    value = 1.4;
+    IOstatus = "input";
+    description = "GAMMA of hot gas at entrance."; }
+
+  real gamOut {
+    IOstatus = "input";
+  }
+
+  real hCool {
+    IOstatus = "input";
+    description = "cooling air enthalpy"; 
+  }
+
+  real PR {
+    IOstatus = "input";
+    description = "Turbine pressure ratio"; 
+  }
+
+  real profil {
+    value = 0.13;
+    IOstatus = "input";
+    units = "NONE";
+    description = "Combustor pattern factor or radial Temp. profile"; 
+  }
+
+  real ptIn {
+    IOstatus = "input";
+    units = "psia";
+    description = "Turbine entry pressure"; 
+  }
+
+  real ptOut {
+    IOstatus = "input";
+    units = "psia";
+    description = "Turbine exit pressure"; 
+  }
+
+ 
+
+  real rLeak {
+    value = (4. / 3.);
+    IOstatus = "input";
+    units = "NONE";
+    description = "correction factor for leakage"; 
+  }
+
+  real safety {
+    value = 150.;
+    IOstatus = "input";
+    units = "R";
+    description = "safety margin for nonuniform inflow"; 
+  }
+
+  real tCool {
+    value = 0;
+    IOstatus = "input";
+    units = "R";
+    description = "cooling air temperature (R)"; 
+  }
+
+  real TR {
+    value = 0;
+    IOstatus = "input";
+    description = "Turbine temperature ratio"; 
+  }
+
+  real ttIn {
+    value = 0;
+    IOstatus = "input";
+    units = "R";
+    description = "turbine inlet air temperature (R)"; 
+  }
+
+  real tMargin {
+    value = 0.;
+    IOstatus = "output";
+    units = "R";
+    description = "margin between metal temperature and maximum metal temperature (R)"; 
+  }
+
+  real effScale {
+
+  }
+
+  int coolTypeBlade[] ={ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 };
+
+  int coolTypeVane[] = { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 };
+
+
+  real WbleedC1, WbleedIn1, WbleedC2, WbleedIn2;
+
+  string cool1{
+    description = "Name of turbine";
+  }
+
+
+  string cool2;
+  real xFactor;       // Cooling flow weighting factor.
+  real xFactor1;
+
+//------------------------------------------------------------
+//   ******* OPTION VARIABLE SETUP *******
+//------------------------------------------------------------
+
+  Option switchDes {
+    allowedValues = { DESIGN, OFFDESIGN }
+    description = "Design mode switch indicator [DESIGN / OFFDESIGN]";
+  }
+
+  //------------------------------------------------------------
+  // ******* INTERNAL SOLVER SETUP *******
+  //------------------------------------------------------------
+  Dependent dep_BleedFlow1{
+    eq_lhs = "WbleedC1";
+    eq_rhs = "WbleedIn1";
+    description = "Error to balance out calculated and actual bleed flow";
+  }
+
+
+ Dependent dep_BleedFlow2{
+    eq_lhs = "WbleedC2";
+    eq_rhs = "WbleedIn2";
+    description = "Error to balance out calculated and actual bleed flow";
+  }
+  //------------------------------------------------------------
+  // ******* FLOW STATIONS *******
+  //------------------------------------------------------------
+  FlowStation Fl_W;
+  FlowStation Fl_cool;
+
+  //---------------------------------------------------------------------------
+  // respond to changes in the switches (especially the solver set-up)
+  //---------------------------------------------------------------------------
+  void variableChanged( string name, any oldVal )
+    {
+      
+      if ( name == "switchDes" ){
+	//---------------------------------------------------------------------------
+	// if we are in transient mode and the user wishes the solver to perform
+	// the integration then we need to let the system know the solver stuff
+	// is available
+	// If not then we need to turn it off
+	//---------------------------------------------------------------------------     
+	if ( switchDes == "DESIGN" ) {
+	  dep_BleedFlow1.autoSetup = TRUE;
+          dep_BleedFlow2.autoSetup = TRUE;
+
+	}
+	else {
+	  dep_BleedFlow1.autoSetup = FALSE;
+	  dep_BleedFlow2.autoSetup = FALSE;
+
+	}
+      }
+    }
+
+
+  //---------------------------------------------------------------------
+  //  Perform engineering calculations
+  //---------------------------------------------------------------------
+  void calculate(){
+
+    //-------------------------------------------------------------------
+    //  declare some values for use in the calculate function
+    //-------------------------------------------------------------------
+ 
+    // default cooling flow factors for coolint tech
+    real factor[] = { 0., 2., 1.5, 1.4, 1.3, 1.2, 1.1, 0.9, 1.0, 0.8 };
+    
+    // vane delta efficiency per percent cooling flow
+    real delnVane[] = { 0.,0.,0.,0.1,0.12,0.15,0.18,0.5,0.35,1.0 };
+    
+    // blade delta efficiency per percent cooling flow
+    real delnBlade[] = {  0.,0.,0.,0.2,0.24,0.30,0.36,1.0,.60,1.5 };
+    
+    real air1;          // Air content of hot gas at entrance to airfoils
+    real air2;          // Air content of cooling flow
+    real const2;
+    real delV;          // Change in stage EFF due to the stator power.
+    
+    real dH;            // Power extracted from each turbine stage.
+    real eff2;          // Thermo efficiency of an uncooled turbine stage
+    real eff3;          // Thermo efficiency of a cooled turbine stage
+    real gam;           // (gammaAvg - 1.) / gammaAvg
+    real gammaAvg;      // (gammaIn + gammaOut) / 2.
+    real gammaOut;      // GAMMA of hot gas at exit.
+    real pAvg;
+    real phi;           // Cooling effectiveness (General name for PHIC).
+    real phiC1;
+    real rDelN;         // Percent change in EFF of a cooled stage.
+    real rows;          // Number of rows of cooled airfoils in turbine.
+    real rp;            // 1. / pr
+    real Ttemp;         // Argument of PhiC(X)
+    real tmBlade;       // Allowable bulk metal TEMP for rotor blades.
+    real tMetal;
+    real tmVane;        // Maximum allowed bulk metal Temp for stator vanes (R).
+    real wBld;
+    real wBld1;         // Bleed flow (same units as W)
+    real wCool;
+    real xN;
+    
+    int i;
+    int ii;
+    int iCool;          // Stage cooling type (from  coolTypeBlade and coolTypeVane arrays)
+    int kVane;          // Indicator; row of airfoils is rotor(-) or stator(+).
+    int m;              // Rows
+    int na;
+
+    real flowIn;
+    real gammaIn;
+    real gamOut;
+    real ptIn;
+    real ptOut;
+    real PR;
+    real TR;
+   
+ 
+    //-------------------------------------------------------------------
+    //  determine average values for use by the system
+    //-------------------------------------------------------------------
+    if (gamOut > 0.) {
+      gammaOut = gamOut;
+    }
+    else {
+      gammaOut = gammaIn;
+    }
+    pAvg = 0.5 *( ptIn + ptOut );
+    rp = 1. / PR;
+    gammaAvg = 0.5 *( Fl_I.gamt + Fl_O.gamt );
+    gam = ( gammaAvg - 1. )/ gammaAvg;
+    xN = nStages;
+    
+    //-------------------------------------------------------------------
+    //  Initialize the flows
+    //-------------------------------------------------------------------
+    Fl_W.copyFlow( "Fl_I" );
+    Fl_cool.copyFlow( cool1 );
+ 
+    flowIn = Fl_I.W;
+    gammaIn = Fl_I.gamt;
+    gamOut = Fl_O.gamt;
+    ptIn = Fl_I.Pt;
+    ptOut = Fl_O.Pt;
+    PR = ptIn / ptOut;
+    rp = 1 /PR;
+    TR = Fl_I.Tt / Fl_O.Tt;
+    //eff = (Turb+".eff")->value;
+    //pwrSupplied = (Turb+".pwrSupplied")->value;    
+    bleedFrac = ( Fl_O.W - Fl_I.W )/ Fl_I.W;
+    
+   WbleedIn1 = Fl_cool.W;
+ 
+    Fl_cool.copyFlow( cool2 );
+    WbleedIn2 = Fl_cool.W;
+    Fl_cool.copyFlow( cool1 );
+ 
+    WbleedC1 = 0; WbleedC2 = 0;
+
+    bleedError = 0;
+    
+    //-------------------------------------------------------------------
+    //  Approximation for relative total Temperature
+    //-------------------------------------------------------------------
+    ttIn = 0.92 * ttIn;    
+
+    real  eff1 = ( PR**gam - 1 )/( TR - 1 );
+
+    real taut = 1;
+ 
+    //-----------------------------------------------------------------------------------------
+    // determine the efficiency for an uncooled turbine stage
+    //-----------------------------------------------------------------------------------------
+    eff2 = ( 1. - (( 1. - eff1 *( 1. - ( rp ** gam )))**( 1. / xN )))/( 1. -( rp ** ( gam / xN )));
+    
+    //-------------------------------------------------------------------
+    // determine the ethalpy change for an individual stage
+    //-------------------------------------------------------------------
+    dH = pwr /( xN * 1.415 );    //this variable is "pwrSupplied" in V1.6.0
+
+
+
+    kVane = -1;
+    
+    //-------------------------------------------------------------------
+    // determine the number of rows
+    //-------------------------------------------------------------------
+    rows = 2. * xN + 0.01;
+    m = rows;
+
+    //-------------------------------------------------------------------
+    // if we are in design mode then intialize all the bleed flows to
+    // zero 
+    //-------------------------------------------------------------------
+
+
+    if (switchDes == "DESIGN" || switchDes == "OFFDESIGN") {
+      
+      
+      
+      for ( i=1; i<=nStages; i++ ) {
+        bladeFlow[i] = 0.;
+        vaneFlow[i] = 0.;
+      }
+ 
+       }
+  
+    for ( ii=1; ii<=m; ii++ ) {
+ 
+   
+ 
+     if ( ii > 1 ) {Fl_cool.copyFlow( cool2 );}
+ 
+      i = ( ii + 1 ) / 2;
+      //-------------------------------------------------------------------
+      // change from rotor to stator and visa/versa
+      //-------------------------------------------------------------------
+      kVane *= -1; 
+  
+      //-------------------------------------------------------------------
+      // Cooling flow weighting 'factor' assigned to 'KINDOF' cooling
+      // configuration
+      //-------------------------------------------------------------------
+      
+      if ( kVane > 0 ) {
+	
+	//-------------------------------------------------------------------
+	// this is a stator 
+	//-------------------------------------------------------------------
+        iCool = coolTypeVane[i];
+        na = coolTypeVane[i];
+        //xFactor = factor[iCool];
+	
+        if ( switchDes == "DESIGN" || switchDes == "OFFDESIGN" ) {
+          tmVane = desVaneTemp[i];
+        }
+        else {
+          tmVane = maxVaneTemp[i];
+        }
+        tMetal = tmVane;
+        vaneTemp[i] = tmVane;
+	
+	//-------------------------------------------------------------------
+	// Dimensionless change in stage efficiency for a one percent change
+	// in stator cooling flow
+	//-------------------------------------------------------------------
+        rDelN = delnVane[iCool];
+        if ( na > 0 ) {
+          //if ( abs(factVane[na] ) > 0.00001 ) { xFactor = factVane[na]; }
+          if ( abs(delVane[na] ) > 0.00001 ) { rDelN = delVane[na]; }
+        }
+      }
+  
+      else {
+	
+	//-------------------------------------------------------------------
+	// this is a rotor 
+	//-------------------------------------------------------------------
+        iCool = coolTypeBlade[i];
+        //xFactor = factor[iCool];
+	
+        if (switchDes == "DESIGN" || switchDes == "OFFDESIGN") {
+          tmBlade = desBladeTemp[i];
+        }
+        else {
+          tmBlade = maxBladeTemp[i];
+        }
+
+        tMetal = tmBlade;
+        bladeTemp[i] = tmBlade;
+	
+	//-------------------------------------------------------------------
+	//  Dimensionless change in stage efficiency for a one percent change
+	//  in rotor cooling flow
+	//-------------------------------------------------------------------
+        rDelN = delnBlade[iCool];
+	
+	//  Added for AST work
+        if (iCool > 0) {
+          if (abs(factBlade[na]) > 0.00001) {
+            //xFactor = factBlade[na];
+          } 
+          else if (abs(factVane[na]) > 0.00001) {
+            //xFactor = factVane[na];
+          }
+          if (abs(delBlade[na]) > 0.00001) {
+            rDelN = delBlade[na];
+          }
+          else if (abs(delVane[na]) > 0.00001) {
+            rDelN = delVane[na];
+          }
+        }
+	
+      }
+
+      //-------------------------------------------------------------------      
+      //  Correction to 'T' for SAFETY margin and relative total temp
+      //-------------------------------------------------------------------
+      if ( kVane > 0.0 ) { Ttemp = 1.00 * Fl_W.Tt + safety; }
+      else { Ttemp = .92 * Fl_W.Tt + safety; }
+
+      if ( switchDes == "DESIGN" || switchDes == "OFFDESIGN" ){
+
+
+	
+	//-------------------------------------------------------------------      
+	//  Calculate Phi
+	//-------------------------------------------------------------------
+        phi  = ( Ttemp - tMetal )/ abs( Ttemp - Fl_cool.Tt );
+	
+
+	//-------------------------------------------------------------------
+	//  Correction to 'Phi' for pattern factor/radial profile
+	//-------------------------------------------------------------------
+	if ( ii == 1 ) { profil = 0.3; } 
+	else { profil = 0.13; } 
+	
+        phi = ( profil + phi )/( profil + 1. );
+        if ( phi < 0. ) { phi = 0.; }
+	
+	//----------------------------------------------------------------------------------------------
+	//  If the Blade is meant to be cooled and it needs to be cooled
+	//----------------------------------------------------------------------------------------------
+        if ((( kVane > 0 && coolTypeVane[i] > 0) || ( kVane < 0 && coolTypeBlade[i] > 0)) && phi > 0. ) {
+          if ( kVane > 0 ) { 
+            real xf = xFactor;
+            if ( i == 1) { xf = xFactor1; }
+            vaneFlow[i] = 0.022 * (( phi /( 1. - phi )) ** 1.25 )* xf * Fl_W.W; // /( bleedFrac * flowIn );
+            if ( vaneFlow[i] / ( vaneFlow[i] + Fl_W.W) < 0.0001) {vaneFlow[i] = 0.0001*Fl_W.W;}
+          }
+          else {
+            bladeFlow[i] = 0.022 * (( phi /( 1. - phi )) ** 1.25) * xFactor * Fl_W.W; // /( bleedFrac * flowIn );
+            if ( bladeFlow[i] / ( bladeFlow[i] + Fl_W.W) < 0.0001) {bladeFlow[i] = 0.0001*Fl_W.W;}
+          }
+	  
+        }	
+ 
+        else {
+
+	  //----------------------------------------------------------------------------------------------
+	  //  Blade does not need cooling
+	  //----------------------------------------------------------------------------------------------
+          if ( phi == 0. ) {
+            if ( kVane > 0 ) {
+              vaneFlow[i] = 0.;
+            }
+            else {
+              bladeFlow[i] = 0.;
+            } 
+          }
+
+        }
+ 
+       if ( kVane > 0 ) {
+          rDelN *= ( vaneFlow[i]  / Fl_W.W * eff2 );
+        }
+        else {
+          rDelN *= ( bladeFlow[i]  / Fl_W.W * eff2 );
+        }
+       
+       if ( kVane > 0 ) {
+	 delV = rDelN; 
+       }
+
+
+        if ( kVane > 0 ) {
+
+	  //----------------------------------------------------------------------------------------------
+	  //  Correction for endwall leakage and disk/shroud cooling
+	  //----------------------------------------------------------------------------------------------
+          vaneFlow[i] = vaneFlow[i]*rLeak;
+          vaneTemp[i] = tmVane;
+
+	  //----------------------------------------------------------------------------------------------
+	  //  update the bleed error
+	  //----------------------------------------------------------------------------------------------
+	  bleedError += vaneFlow[i];
+	  
+	  //----------------------------------------------------------------------------------------------
+	  //  set the cooling weight flow for this fraction
+	  //----------------------------------------------------------------------------------------------
+	  Fl_cool.W = vaneFlow[i];
+
+          if ( i == 1 ){
+	    WbleedC1 = WbleedC1 + Fl_cool.W;
+          
+            }
+
+	
+
+          else {
+          
+            WbleedC2 = WbleedC2 + Fl_cool.W;
+          
+     
+            }
+              
+	  //----------------------------------------------------------------------------------------------
+	  //  determine the enthalpy after thgis stage based on an energy balance
+	  //----------------------------------------------------------------------------------------------
+	  real ht = ( Fl_W.W * Fl_W.ht + Fl_cool.W * Fl_cool.ht )/( Fl_W.W + Fl_cool.W  );
+
+	  //----------------------------------------------------------------------------------------------
+	  //  update the working station (assume pressure varies linearly)
+	  //----------------------------------------------------------------------------------------------
+          //cerr << "Temp =" << Fl_W.Tt << "\n";
+	  Fl_W.add( "Fl_cool" );
+
+
+	  Fl_W.setTotal_hP( ht, ( ptOut + ( ptIn - ptOut ) * i / nStages ) );
+          //cerr << ii << "\n";
+	  //cerr << Fl_W.Tt << "\n";
+	  //cerr << Fl_W.W << "\n\n";
+
+
+	}
+
+        else {
+	  
+	  //----------------------------------------------------------------------------------------------
+	  //  Correction for endwall leakage and disk/shroud cooling
+	  //----------------------------------------------------------------------------------------------
+          bladeFlow[i] = bladeFlow[i]*rLeak;
+          bladeTemp[i] = tmBlade;
+	  
+	  //----------------------------------------------------------------------------------------------
+	  //  update the bleed error
+	  //----------------------------------------------------------------------------------------------
+	  bleedError += bladeFlow[i];
+	  
+	  //----------------------------------------------------------------------------------------------
+	  //  set the cooling weight flow for this fraction
+	  //----------------------------------------------------------------------------------------------
+	  Fl_cool.W = bladeFlow[i];
+
+	  WbleedC2 = WbleedC2 + Fl_cool.W;
+
+	  //----------------------------------------------------------------------------------------------
+	  //  update the stage efficiency since this is a vane
+	  //----------------------------------------------------------------------------------------------
+	  eff3 = eff2 - rDelN - delV;
+
+	  taut = ( 1. - eff3 *( 1. - ( rp ** ( gam / xN )))) * taut;
+
+	  //----------------------------------------------------------------------------------------------
+	  //  determine the enthalpy after thgis stage based on an energy balance
+	  //----------------------------------------------------------------------------------------------
+	  ht = -dH / Fl_W.W + ( Fl_W.W * Fl_W.ht + Fl_cool.W * Fl_cool.ht )/( Fl_W.W + Fl_cool.W  );
+
+	  //----------------------------------------------------------------------------------------------
+	  //  update the working station (assume pressure varies linearly)
+	  //----------------------------------------------------------------------------------------------
+	  Fl_W.add( "Fl_cool" );
+	 
+	  Fl_W.setTotal_hP( ht, ( ptOut + ( ptIn - ptOut ) * i / ( nStages )) );
+          //cerr << ii << "\n";
+	  //cerr << Fl_W.Tt << "\n";
+	  //cerr << Fl_W.W << "\n\n";
+        }
+
+      }
+    }
+    
+    //----------------------------------------------------------------------------------------------
+    //  Calculate the cooled turbine efficiency
+    //----------------------------------------------------------------------------------------------
+    eff4 = ( 1. - taut ) /( 1. - ( rp ) ** gam );
+
+    // eff4 = ( PR**gam - 1 )/( TR - 1 );
+
+    effScale = eff4 / eff1;
+
+
+  }
+
+  
+}
+

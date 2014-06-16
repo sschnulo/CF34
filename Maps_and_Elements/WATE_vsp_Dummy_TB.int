@@ -1,0 +1,129 @@
+
+#ifndef _WATE_vsp_Dummy_TB__INT
+#define _WATE_vsp_Dummy_TB__INT
+
+#include "WATE_vsp_COMMON_TB.int"
+
+
+/**
+ *Author: Tim Unton
+ *Updated: 4/21/10
+ ****************************************************************/
+class WATE_vsp_Dummy_TB extends WATE_vsp_common_TB
+{
+
+  /**
+   *
+   ****************************************************************/
+  void update() {
+//    cout << "TOP: DUMMY COMPONENT VSP HANDLER: " << comp_name << endl;  //Seidel omitted
+    filledBlock = { };
+
+    string ts;
+
+    real colors[3];
+
+    int rc;
+    int returned_vps_child_pointers[] = {};
+    int vsp_pointer = randomInt(1,9999999999);
+    int vsp_child_pointers[] = {};
+    int vsp_parent_pointer = 0;
+
+    int cnt = 0;
+
+//Seidel omitted
+/*
+    // DUMPS THE COMPONENTS VARIABLES
+    printValue(comp_name->list("Variable", TRUE));
+
+    cout << comp_name << ": " << endl;
+    if( comp_name->exists("inPort") ) {
+     cout << "INPORT: " << endl;
+     cout << "    INNER RADIUS   : " << comp_name->inPort.innerRadius << endl;
+     cout << "    OUTER RADIUS   : " << comp_name->inPort.outerRadius << endl;
+     cout << "    AXIAL POSITION : " << comp_name->inPort.axialPosition << endl;
+//     //printValue(comp_name->inPort.list("Variable", FALSE));
+     cnt++;
+    } else {
+      cout << " NO INPORT " << endl;
+    }
+
+    if( comp_name->exists("outPort") ) {
+     cout << "OUTPORT: " << endl;
+     cout << "    INNER RADIUS   : " << comp_name->outPort.innerRadius << endl;
+     cout << "    OUTER RADIUS   : " << comp_name->outPort.outerRadius << endl;
+     cout << "    AXIAL POSITION : " << comp_name->outPort.axialPosition << endl;
+     //printValue(comp_name->outPort.list("Variable", FALSE));
+     cnt++;
+    } else {
+      cout << " NO OUTPORT " << endl;
+    }
+*/
+
+    if( cnt == 2 ) {
+       
+      int pad = 4; 
+
+
+      real xp[] = {};
+      real yp[] = {};
+
+
+      // OUTER SURFACE
+      colors[$R] = 255.0;
+      colors[$G] = 155.0;
+      colors[$B] = 100.0;
+
+      xp.append(comp_name->inPort.axialPosition);
+      yp.append(comp_name->inPort.outerRadius * 2.0);
+ 
+      xp.append(comp_name->outPort.axialPosition);
+      yp.append(comp_name->outPort.outerRadiusDwn * 2.0);
+
+      ts = comp_name->getName() + "_:_OUT";
+      returned_vps_child_pointers = add_fuse_from_points(xp, yp, xp.entries(), ts, colors[$R], colors[$G], colors[$B], 3, pad, vsp_pointer);
+      for( rc = 0 ; rc > returned_vps_child_pointers.entries() ; rc++ ) {
+        vsp_child_pointers.append( returned_vps_child_pointers[rc] );
+      }
+      returned_vps_child_pointers.resize(0);
+
+
+
+      xp.resize(0);
+      yp.resize(0);
+
+      // INNER SURFACE
+      colors[$R] = 155.0;
+      colors[$G] = 255.0;
+      colors[$B] = 100.0;
+
+      xp.append(comp_name->inPort.axialPosition);
+      yp.append(comp_name->inPort.innerRadius * 2.0);
+
+      xp.append(comp_name->outPort.axialPosition);
+      yp.append(comp_name->outPort.innerRadiusDwn * 2.0);
+
+      ts = comp_name->getName() + "_:_IN";
+      returned_vps_child_pointers = add_fuse_from_points(xp, yp, xp.entries(), ts, colors[$R], colors[$G], colors[$B], 3, pad, vsp_pointer);
+      for( rc = 0 ; rc > returned_vps_child_pointers.entries() ; rc++ ) {
+        vsp_child_pointers.append( returned_vps_child_pointers[rc] );
+      }
+      returned_vps_child_pointers.resize(0);
+
+
+      xp.resize(0);
+      yp.resize(0);
+
+    } else {
+      // YOU HAVE TO PUT SOMETHING IN THE FILE OR ALL OUTPUT TO THE FILE IS STOPPED
+      filledBlock.append( "<DUMMY>" + comp_name + "</DUMMY>");
+    }
+
+//    cout << "==============================================" << endl;  //Seidel omitted
+
+   }
+
+}
+
+#endif
+

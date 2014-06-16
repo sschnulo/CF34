@@ -1,0 +1,118 @@
+//******************************************************
+// Changes to the baseline WATE++ model:
+//******************************************************
+
+real Fan_AR_Fact = 1.128862;
+real HPC_AR_Fact = 1.0573;
+real HPT_AR_Fact = 1;
+real LPT_AR_Fact = 1;
+
+real HPC_SolidityFact = 2;
+real HPT_SolidityFact = 0.98;
+real LPT_SolidityFact = 0.944;
+
+WATEa.S_Accessories.weight_in = 750;
+
+// --- Inlet ---
+WATEa.WATE_Inlet.LDratio = 0.75;
+WATEa.WATE_Inlet.nacelleDeltaRadius = 8.0;
+WATEa.WATE_Inlet.acousticLinerThickness = 0.25;
+WATEa.WATE_Inlet.firewallThickness = 1.25;
+WATEa.WATE_Inlet.s_Wt = 0;
+
+// --- Engine Mount ---
+WATEa.S_EngineMount.ultLoadFactor = 2;
+WATEa.S_EngineMount.s_Wt = 0;
+
+// --- Fan ---
+WATEa.WATE_Fan.numContainedStages = 1;
+WATEa.WATE_Fan.stg1NcTip = 1632.9;
+WATEa.WATE_Fan.outletInletRR = 0.9852;
+WATEa.WATE_Fan.radiusChangeStg = 1.0;
+WATEa.WATE_Fan.hubTipRatioIn = 0.371;			
+WATEa.WATE_Fan.numBlades_in = 28;
+WATEa.WATE_Fan.statorSolidity = 0;
+WATEa.WATE_Fan.stg1BladeAR = 1.94 * Fan_AR_Fact ;
+WATEa.WATE_Fan.stg1StatorAR = 2.3 * Fan_AR_Fact ;
+WATEa.WATE_Fan.S_RearFrame.aspectRatio_in = WATEa.WATE_Fan.stg1StatorAR;
+WATEa.WATE_Fan.RSlenRatioPreSplit = 2.5468; 
+WATEa.WATE_Fan.RSlenRatioPostSplit = -1.2;
+WATEa.WATE_Fan.RSlenRatioBypass = -0.7; //adjusted by WATE solver		
+WATEa.WATE_Fan.s_Wt = 0;
+
+// --- Splitter ---
+WATEa.WATE_Splitter.s_Wt = 0;
+
+// --- Duct6 ---
+WATEa.WATE_Duct6.lengthHeightRatio = 2.948;	
+WATEa.WATE_Duct6.s_Wt = 0;
+
+// --- HPC ---
+WATEa.WATE_HPC.stg1NcTip = 1550.4;
+WATEa.WATE_HPC.hubTipRatioIn = 0.627;
+WATEa.WATE_HPC.stg1MaxPR = 1.529;			
+WATEa.WATE_HPC.stg1BladeAR = 2.27 * HPC_AR_Fact;
+WATEa.WATE_HPC.lastStgBladeAR = 1.275 * HPC_AR_Fact;
+WATEa.WATE_HPC.stg1StatorAR = 3.75 * HPC_AR_Fact;
+WATEa.WATE_HPC.lastStgStatorAR = 1.5 * HPC_AR_Fact;
+WATEa.WATE_HPC.bladeSolidity = 1.7 * HPC_SolidityFact; //1.1
+WATEa.WATE_HPC.statorSolidity = 1.3 * HPC_SolidityFact;
+WATEa.WATE_HPC.igvSolidity = 2.1 * HPC_SolidityFact;
+WATEa.WATE_HPC.s_Wt = 0;
+
+// --- Bld3 ---	
+WATEa.WATE_Bld3.lengthHeightRatio = 3.8;			
+WATEa.WATE_Bld3.s_Wt = 0;
+
+// --- Burner ---
+WATEa.WATE_Burner.Vflow = 65;
+WATEa.WATE_Burner.residenceTime = 0.0086;
+WATEa.WATE_Burner.s_Wt = 0;
+
+// --- HPT ---
+WATEa.WATE_HPT.outletInletRR = 0.98;
+WATEa.WATE_HPT.stg1BladeAR = 2.2 * HPT_AR_Fact;	   
+WATEa.WATE_HPT.lastStgBladeAR = 2.6 * HPT_AR_Fact;
+WATEa.WATE_HPT.GEloadingParam_in = 0.6;
+WATEa.WATE_HPT.bladeSolidity = 2.1 * HPT_SolidityFact;
+WATEa.WATE_HPT.statorSolidity = 2.1 * HPT_SolidityFact;
+WATEa.WATE_HPT.s_Wt = 0;
+
+// --- Duct11 ---
+WATEa.WATE_Duct11.lengthHeightRatio = 2.2;
+WATEa.WATE_Duct11.s_Wt = 0;
+
+// --- LPT ---
+real Fanflow = 482.87;
+real Fanspcflow = 42.6124;
+real LPT_ORL_Factor = 0.4715;  //Ratio of LPT inlet tip radius to fan tip radius
+WATEa.WATE_LPT.outletInletRR = 0.90;
+WATEa.WATE_LPT.outerRadiusLimit = sqrt(Fanflow/Fanspcflow*1/(PI*(1-WATEa.WATE_Fan.hubTipRatioIn**2)))*LPT_ORL_Factor*12;
+WATEa.WATE_LPT.GEloadingParam_in = 1.2;
+WATEa.WATE_LPT.stg1BladeAR = 6.5 * LPT_AR_Fact;  
+WATEa.WATE_LPT.lastStgBladeAR = 3.8 * LPT_AR_Fact; 
+WATEa.WATE_LPT.bladeSolidity = 2.8 * LPT_SolidityFact;
+WATEa.WATE_LPT.statorSolidity = 2.4 * LPT_SolidityFact;
+WATEa.WATE_LPT.s_Wt = 0;
+
+// --- Duct13 ---
+WATEa.WATE_Duct13.lengthHeightRatio = 0.216;			
+WATEa.WATE_Duct13.s_Wt = 0;
+
+// --- Core Nozzle ---
+WATEa.WATE_Core_Nozz.LDratio = 0.27;
+WATEa.WATE_Core_Nozz.S_Plug.lengthRatio = 4.0;
+WATEa.WATE_Core_Nozz.s_Wt = 0;
+
+// --- Duct 15 (Bypass Duct) ---
+WATEa.WATE_Duct15.s_Wt = 0;
+
+// --- Bypass Nozzle ---
+WATEa.WATE_Byp_Nozz.s_Wt = 0;
+
+// --- LP Shaft ---
+WATEa.WATE_LP_Shaft.s_Wt = 0;
+
+// --- HP Shaft ---
+WATEa.WATE_HP_Shaft.s_Wt = 0;
+

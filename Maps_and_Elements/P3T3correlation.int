@@ -1,0 +1,4 @@
+// --- P3T3 Correlation for CF34-8C5 (G Tech) ---
+
+EINOx =  (1+PCT_NOx) * (exp(19*(0.006344 - humFact ) ) * Pt3**0.40 * (7.9834E-11 * Tt3**4 - 2.8733E-07 * Tt3**3 + 3.5303E-04*Tt3**2 - 1.5949E-01 * Tt3 + 1.5364E+01));																			
+	

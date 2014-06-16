@@ -1,0 +1,250 @@
+
+#ifndef _WATEFANAXICONVNOZZLE_MOD_
+#define _WATEFANAXICONVNOZZLE_MOD_
+
+class WATEfanAxiConvNozzle_mod extends WATEnozzleBase_mod
+{  
+   //IWMEC(3)
+   Option bypassNozzleType {
+     trigger = 0;
+     allowedValues = { "ConstHub", "ConstMean", "ConstTip" }
+     IOstatus = "input" ;    units = "none";
+     description = "Sets which radii of a fan nozzle is kept constant" ;
+   }
+   
+   /**
+    *
+    ***********************************************************************/
+   void calcNozzleWt() {
+      WATEnozzleBase_mod::calcNozzleWt();
+      
+      real rhoNozzle = material.rho(timax);
+      
+      real wtin = PI*(ri1+ri2)*sqrt((ri1-ri2)**2+xnz**2)*thickness*rhoNozzle;
+      if(!S_VariableGeometry.isEmpty()){
+        if (calcComponentThickness  !=  1) { wtin *= 2.75; }
+      }
+      innerCaseWt = wtin;
+      nozzleWt += innerCaseWt;
+   }
+   
+   /**
+    *
+    ***********************************************************************/
+   void calcTransDuctWt()
+   {
+      real tduct=0.1;
+      real rhoNozzle = material.rho(timax);
+      
+   //  compute transition duct thickness if calcComponentThickness=1.  
+   //  compute plug thickness if calcComponentThickness=1.
+      if(calcComponentThickness  ==  1){
+         tduct = pomax*ro1/(str);
+         if(tduct  <  0.10) { tduct=0.10; }
+      }
+      transDuctWt = 2.0*PI*(ro1+ri1)*transDuctLength*tduct*rhoNozzle;
+   }   
+   
+
+   /**
+    *
+    ***********************************************************************/
+  void calcNozzleExitRadii()
+  {
+      real ra,delr;
+      real opor = outPort.outerRadius;
+
+      if(opor > 0) { xrout = opor; }
+      
+      if(bypassNozzleType  ==  "ConstHub") {
+        xrout = sqrt(rin*rin + exitArea/PI);
+      } 
+      else if(bypassNozzleType  ==  "ConstMean") {
+         ra = (rin + xrout)/2.0;
+         delr = exitArea/(2.0*PI*ra);
+         rin  = ra - 0.5*delr;
+         xrout = ra + 0.5*delr;
+      } 
+      else if(bypassNozzleType  ==  "ConstTip"){
+         rin  = sqrt(xrout*xrout - exitArea/PI);
+      }
+ 
+      outPort.innerRadius = rin;
+      outPort.outerRadius = xrout;
+   }  
+
+   /**
+    *
+    ***********************************************************************/
+   void calcFairingEndRadii() {
+      //fy[1] = outPort.innerRadius; 
+   }
+   
+   
+   /**
+    *
+    ***********************************************************************/
+   void setDefaults() {     
+     WATEnozzleBase_mod::setDefaults();
+     if(outPort.outerRadius  >  0.) { 
+        bypassNozzleType = "ConstTip"; 
+     }
+   }
+   
+   
+  /**
+   * 
+   ******************************************************************/
+   void calcGeometry() {     
+
+         real melen = 0;
+         real pluglen = 0;
+         real outerCaseRadius = inPort.outerRadius*outerCaseInletRR;
+
+         real x_sp[8], y_sp[8];
+         real x[64], y[64];
+         real x_c[3],y_c[3];
+         real x_c2[4],y_c2[4];
+         real fx1,fx2,fy1,fy2;
+
+         real theata,yo,ymax,diff;
+
+         int i,j,ik;
+
+         if(!S_MixerEjector.isEmpty()) { 
+            S_MixerEjector.child.calcGeometry(); 
+            melen = S_MixerEjector.length;
+         }
+         if(!S_AcousticLiner.isEmpty()) { S_AcousticLiner.child.calcGeometry(); }
+         if(!S_ThrustReverser.isEmpty()) { S_ThrustReverser.child.calcGeometry(); }
+         if(!S_Plug.isEmpty()) { 
+            S_Plug.child.calcGeometry(); 
+            pluglen = S_Plug.length;
+         }
+         if(!S_VariableGeometry.isEmpty()) { S_VariableGeometry.child.calcGeometry(); }
+
+         if(pluglen <= length && pluglen > 0) { // plug shorter than nozzle
+            x_sp[0] = inPort.axialPosition + melen + transDuctLength;
+            y_sp[0] = inPort.outerRadius;
+            x_sp[1] = outPort.axialPosition;
+            y_sp[1] = outPort.outerRadius;
+            x_sp[2] = x_sp[1];
+            y_sp[2] = outPort.innerRadius;
+            x_sp[3] = x_sp[1];
+            y_sp[3] = y_sp[1];
+            x_sp[4] = inPort.axialPosition + throatLocation;
+            y_sp[4] = throatOuterRadius;
+            x_sp[5] = inPort.axialPosition + melen + transDuctLength;
+            y_sp[5] = inPort.outerRadius;
+            if((pluglen == 0. || transDuctLength > 0.)) { 
+               x_sp[6] = x_sp[5];
+               y_sp[6] = y_sp[5];
+               x_sp[7] = x_sp[6];
+               y_sp[7] = y_sp[6];
+            } 
+            else {
+               x_sp[6] = x_sp[5];
+               y_sp[6] = inPort.innerRadius;
+               x_sp[7] = x_sp[0] + pluglen - melen - transDuctLength;
+               y_sp[7] = 0.0;
+            }
+            if(outerCaseRadius > inPort.outerRadius) {
+              x_sp[0] = x_sp[1];
+              y_sp[0] = y_sp[1];
+            }
+
+            addPolyLine(x_sp,y_sp,drawDepth,1);
+         }
+         else {
+            x[0] = inPort.axialPosition + pluglen;
+            y[0] = 0.0;
+            x[1] = inPort.axialPosition + length;
+            y[1] = outPort.innerRadius;
+            x[2] = inPort.axialPosition + throatLocation;
+            y[2] = throatInnerRadius;
+            diff   = inPort.innerRadius-throatInnerRadius;
+            yo     = throatInnerRadius+diff/2.;
+            ymax   = abs(diff/2.);
+            theata = 0.0;
+            if (diff > 0.0) { theata=PI; } 
+            for(ik=2; ik<=30; ++ik) { 
+              y[ik] = ymax*cos(theata)+yo;
+              if (ik != 2) {
+                 x[ik]  = x[ik-1]-(throatLocation-melen-transDuctLength)/28.; 
+              }                
+              theata = theata+0.1083308;
+            } 
+            x[31] = inPort.axialPosition;
+            y[31] = inPort.innerRadius;
+            x[32] = x[31];
+            y[32] = inPort.outerRadius;
+            x[33] = inPort.axialPosition + melen + transDuctLength;
+            y[33] = inPort.outerRadius;
+            diff   = outPort.outerRadius-inPort.outerRadius;
+            yo     = inPort.outerRadius+diff/2.;
+            ymax   = abs(diff/2.);
+            theata = 0.0;
+            if (diff > 0.0) { theata=PI; } 
+            for(ik=33; ik<=61; ++ik) { 
+              y[ik] = ymax*cos(theata)+yo;
+              if (ik != 33) { 
+                 x[ik]  = x[ik-1]+(length-melen-transDuctLength)/28.; 
+              }                 
+              theata = theata+0.1083308;
+            } 
+            x[62] = x[1];
+            y[62] = outPort.outerRadius;
+            x[63] = x[1];
+            y[63] = y[1];
+
+            if(pluglen == 0.) { x[0]=x[1]; y[0]=y[1]; } 
+
+            addPolyLine(x,y,drawDepth,1);
+        }
+
+   //
+   //jjc draw nozzle outer case if requested.
+   //
+        if(outerCaseRadius > inPort.outerRadius) {
+         x_c[0] = inPort.axialPosition;
+         y_c[0] = outerCaseRadius;
+         x_c[1] = x_c[0] + throatLocation;
+         y_c[1] = ro6;
+         x_c[2] = x_c[0] + length;
+         y_c[2] = outPort.outerRadius;
+
+         addPolyLine(x_c,y_c,drawDepth,1);
+
+         if(pluglen > length) {
+           x_c2[0] = x_c[1];
+           y_c2[0] = y_c[1];
+           x_c2[2] = x_c2[0];
+           y_c2[2] = throatOuterRadius;
+           x_c2[1] = x_c2[0] - 0.2*(y_c2[0]-y_c2[2]);
+           y_c2[1] = (y_c2[0] + y_c2[2])/2.0;
+           x_c2[3] = x_c2[0];
+           y_c2[3] = (y_c2[0] + y_c2[2])/2.0;
+
+           addPolyLine(x_c2,y_c2,drawDepth,1);
+         }
+      }
+
+   // get x locations for fairing line
+      
+      string nozzles[] = parent.parent.list("WATEnozzleBase_mod",0);
+      if(nozzles.entries() == 2) {
+         fx1 = inPort.axialPosition+length;
+         fy1 = outPort.innerRadius;
+         for(i=0; i<2; ++i) {
+             if(nozzles[i] != getPathName()) {
+                fx2 = nozzles[i]->outPort.axialPosition;
+                fy2 = nozzles[i]->outPort.outerRadius;
+             }
+         }
+         addLine(fx1,fy1,fx2,fy2,drawDepth,1);
+      }
+   }
+}
+
+#endif
+

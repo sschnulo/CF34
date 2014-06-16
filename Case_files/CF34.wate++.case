@@ -1,0 +1,136 @@
+//------------------- Run Climb Envelope for WATE -----------------
+
+cout << "----------------------------------------------------------\n";
+cout << "          RUNNING CASES FOR WATE++ ANALYSIS               \n"; 
+cout << "----------------------------------------------------------\n";
+
+CASE = 700; 
+
+//=====================================
+// Collect NPSS Design Data for WATE++:
+//=====================================
+
+// Rerun the aerodynamic design point and save the mechanical design data:
+cout << "MN = 0.80, Alt = 35000, ISA+0 (ADP)\n"; 
+MODELNAMEALT = "Aerodynamic Design Point (Rerun for WATE++)";
+RunMaxPower(0.80, 35000., 0., maxNcref, maxT4SLSref, maxT4RTOref); page.display(); ++CASE; 
+WATEa.saveMechDesignData();
+
+// Next, save the following key cycle design information to define the engine's dimensions:
+WATEa.WATE_Fan.MNin          = Fan.Fl_I.MN;
+WATEa.WATE_Fan.MNout         = Fan.Fl_O.MN;
+WATEa.WATE_Duct6.MNin_in     = Duct6.Fl_I.MN;
+WATEa.WATE_HPC.MNin          = HPC.Fl_I.MN;
+WATEa.WATE_HPC.MNout         = HPC.Fl_O.MN;
+WATEa.WATE_Bld3.MNin_in      = Bld3.Fl_I.MN;
+WATEa.WATE_HPT.MNin          = HPT.Fl_I.MN;
+WATEa.WATE_HPT.MNout         = HPT.Fl_O.MN;
+WATEa.WATE_Duct11.MNin_in    = Duct11.Fl_I.MN;
+WATEa.WATE_LPT.MNin          = LPT.Fl_I.MN;
+WATEa.WATE_LPT.MNout         = LPT.Fl_O.MN;
+WATEa.WATE_Duct13.MNin_in    = Duct13.Fl_I.MN;
+WATEa.WATE_Core_Nozz.MNin    = Core_Nozz.Fl_I.MN;
+WATEa.WATE_Byp_Nozz.MNin     = Byp_Nozz.Fl_I.MN;
+WATEa.WATE_Duct15.MNin_in    = Duct15.Fl_I.MN;
+WATEa.WATE_Inlet.MNin        = Inlet.Fl_I.MN;
+WATEa.WATE_Splitter.coreArea = Splitter.Fl_01.Aphy;
+
+
+//=====================================
+// Now run a spine down to sea level:
+//=====================================
+
+RunMaxPower(0.70, 30000., 0.,  maxNcref, maxT4SLSref, maxT4RTOref);
+RunMaxPower(0.60, 25000., 0.,  maxNcref, maxT4SLSref, maxT4RTOref);
+RunMaxPower(0.50, 20000., 0.,  maxNcref, maxT4SLSref, maxT4RTOref);
+RunMaxPower(0.40, 15000., 0.,  maxNcref, maxT4SLSref, maxT4RTOref);
+RunMaxPower(0.30, 10000., 27., maxNcref, maxT4SLSref, maxT4RTOref);
+RunMaxPower(0.20, 5000.,  27., maxNcref, maxT4SLSref, maxT4RTOref);
+RunMaxPower(0.10, 2000.,  27., maxNcref, maxT4SLSref, maxT4RTOref);
+RunMaxPower(0.00, 0.0,    27., maxNcref, maxT4SLSref, maxT4RTOref);
+
+//=====================================
+// Now run a spine up to top of climb
+// and collect data along the way:
+//=====================================
+
+MODELNAMEALT = "WATE++ Data Collection Point";
+RunMaxPower(0.0, 0.0, 27., maxNcref, maxT4SLSref, maxT4RTOref); page.display(); ++CASE; WATEa.updateMaxValues();
+cout << "MN = 0.00, Alt =     0, ISA+27 \n"; 
+
+RunMaxPower(0.2, 689., 27., maxNcref, maxT4SLSref, maxT4RTOref); page.display(); ++CASE; WATEa.updateMaxValues();
+cout << "MN = 0.20, Alt =   689, ISA+27 \n"; 
+
+RunMaxPower(0.4, 5000., 27., maxNcref, maxT4SLSref, maxT4RTOref); page.display(); ++CASE; WATEa.updateMaxValues();
+cout << "MN = 0.40, Alt =  5000, ISA+27 \n"; 
+
+RunMaxPower(0.6, 20000., 0., maxNcref, maxT4SLSref, maxT4RTOref); page.display(); ++CASE; WATEa.updateMaxValues();
+cout << "MN = 0.60, Alt = 20000, ISA+0 \n"; 
+
+RunMaxPower(0.8, 34000., 0., maxNcref, maxT4SLSref, maxT4RTOref); page.display(); ++CASE; WATEa.updateMaxValues();
+cout << "MN = 0.80, Alt = 34000, ISA+0 \n"; 
+
+RunMaxPower(0.8, 35000., 0., maxNcref, maxT4SLSref, maxT4RTOref); page.display(); ++CASE; WATEa.updateMaxValues();
+cout << "MN = 0.80, Alt = 35000, ISA+0 \n"; 
+
+//=====================================
+// Run the WATE++ calculations
+//=====================================
+
+WATEa.setOption("executionState","CALCULATE");
+WATEa.solver.maxJacobians = 600;
+WATEa.solver.maxIterations = 600;
+WATEa.autoSolverSetup();
+
+//=====================================
+// Add any WATE++ Ind/Dep balances:
+//=====================================
+
+WATEa.solver.addIndependent( "Fan_Stator" );
+WATEa.solver.addDependent( "Fan_Stator_Loc" );
+
+WATEa.solver.addIndependent( "Fan_Frame" );
+WATEa.solver.addDependent( "Fan_Frame_Loc" );
+
+WATEa.solver.addIndependent( "Duct14_Length" );
+WATEa.solver.addDependent( "Duct14_Loc" );
+
+WATEa.solver.addIndependent( "Bypass_Duct" );
+WATEa.solver.addDependent( "Bypass_Duct_Loc" );
+
+WATEa.solver.addIndependent( "Bypass_Nozz_LDratio" );
+WATEa.solver.addDependent( "Bypass_Nozz_Loc" );
+
+//=====================================
+// Execute WATE++ and create diagram:
+//=====================================
+
+// The WATE++ analysis generates several warnings of severity 
+// level 7 and disk design errors of severity level 8
+// that intuitively can not be valid, since the actual CF34 engine 
+// was designed and operates under the flagged conditions.  
+// The warnings are suppressed and are turned on afterward.
+// Disk design error messages are directed to the debug file stream.
+ESOregSetActive( 1001001, FALSE );
+errHandler.errStreamName = "MyDebug";
+
+// Run the analysis:
+WATEa.run();
+WATEa.wateppPV.display();
+WATEa.svg.display();
+
+// Create the VSP information:
+WATEa.WATE_vsp_view.display();
+
+// Re-allow warning messages and redefine error stream:
+ESOregSetActive( 1001001, TRUE );
+errHandler.errStreamName = "cerr";
+
+// The resulting diagram files need to be moved to the "Output" folder
+// (rather than be written there directly) so that the html object tag will work properly:
+system("move " + WATEa.svg.filename + " Output/" + WATEa.svg.filename );
+system("move " + WATEa.svg.svgfilename + " Output/" + WATEa.svg.svgfilename );
+MODELNAMEALT = " ";
+
+cout << "WATE++ aeromechanical, flowpath, and weight " << endl << "calculations are complete." << endl; 
+

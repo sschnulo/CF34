@@ -1,0 +1,785 @@
+#ifndef WATEINLETBASE
+#define WATEINLETBASE
+
+//
+// LAST INSPECTION DATE: *not inspected*
+//
+//  EXTERNAL DEPENDENCIES
+//
+//    parent.list()
+//    VCInterface* nozzle2Ref
+//    VCInterface* nozzleRef
+//    WATEInputPort* compressorPortRef
+//    WATEOutputPort* outPorts
+//    WATEaxialCompressor* compressorRef
+//    VCInterface* aftEngMntPortRef
+
+
+//
+// this is the base class for all WATE inlet components. It performs most of 
+// the calculations and inherited inlet classes generally just supply different
+// sets of defaults
+//
+class WATEinletBase_mod extends WATEelement
+{
+     // aero design point data
+     real des_Wc;
+   
+     string aftEngMntPortRef {
+        IOstatus = "input";
+        description = "port where aft engine mount is attached";
+     }
+     
+     //IWMEC(6)
+     int calcStructWt {
+       value = FALSE;  IOstatus = "input";  units = "none";
+       description = "Turns on and off the calculation of inlet weight by WATE";
+     }
+
+     //IWMEC(7)
+     Option bypassDoorType {
+       trigger = 0;
+       allowedValues = { "NONE", "2D", "AXI"  }
+       IOstatus = "input"; units = "none";
+       description = "Selects the type of bypass doors used in WATE calculations";
+     }
+
+     real bypassDoorWt {
+        units = "lbf";  // ??? not sure of units...
+        description = "weight of bypass door";
+     }
+
+     //IWMEC(8)
+     int calcThroatDoorWt {
+       value = FALSE; IOstatus = "input"; units = "none";
+       description = "Turns on and off the calculation of throat door weight by WATE";
+     }
+
+      //IWMEC(9)
+     int calcFirewallWt {
+       value = FALSE; IOstatus = "input"; units = "none";
+       description = "Turns on and off the calculation of the firewall weight by WATE";
+     }
+
+     real firewallWt {
+        units = "lbf";  // ??? not sure of units...
+        description = "weight of firewall";
+     }
+     
+     real firewallThickness {
+        value = 1.0;
+     }
+
+       //IWMEC(11)
+     int calcAntiIceWt {
+       value = FALSE; IOstatus = "input";
+       description = "Turns on and off the calculation of the lip Anti-ice sprayer weight by WATE";
+     }
+
+     real antiIceWt {
+        units = "lbf";  // ??? not sure of units...
+        description = "weight of anti-icing system";
+     }
+
+     real acousticWt { 
+        units = "lbf";  // ??? not sure of units...
+        description = "weight of acoustic material";
+     }
+
+     //DESVAL(2)
+     real Qmax {
+       value = 1000.0; IOstatus = "input"; units = "lbf/ft2";
+       description = "Maximum dynamic pressure. Default = 1000";
+     }
+
+     //DESVAL(7)
+     real shapeFactor {
+       value = 1.0; IOstatus = "input"; units = "none";
+       description = "Inlet shape factor for non 2-D or axi-symetric inlets. Default = 1.0";
+     }
+
+      //DESVAL(11)
+     real LDratio {
+       IOstatus = "input"; units = "none";
+       description = "Inlet length to fan diameter ratio";
+     }
+
+     //DESVAL(12)
+     real lengthSplitDuct {
+       IOstatus = "input"; units = "in";
+       description = "Length of the inlet split duct";
+     }
+
+     //DESVAL(13)
+     real maxNacelleArea {
+       IOstatus = "input"; units = "in2";
+       description = "Maximum nacelle cross sectional area";
+     }
+
+     //DESVAL(14)
+     real fanFaceToMaxNacelleArea {
+       IOstatus = "input"; units = "in";
+       description = "Axial distance from fan face to location of max nacelle area. Positive is aft of the fan, negative if forward of the fan";
+     }
+     //DESVAL(17)
+     real nacelleThickness {
+       value = 0.1;       IOstatus = "input"; units = "in";
+       description = "Nacelle material thickness. Default = 0.1";
+     }
+
+     //DESVAL(19)
+     real acousticLinerThickness {
+       IOstatus = "input"; units = "in";
+       description = "Acoustic liner material thickness. Default = 0.0";
+     }
+
+     //DESVAL(20)
+     // used to be nacelleWallThickness, which was too similar to 
+     // nacelleThickness
+     real nacelleDeltaRadius {
+       IOstatus = "input"; units = "in";
+       description = "Used to calculate nacelle maximum diameter. If input, will override maxNacelleArea. Default = 0.0";
+     }
+
+      real diameter {
+         units = "in"; IOstatus = "output";
+         description = "inlet diameter";
+      }
+      
+      defaultHideLevel = 1; // ***** hide the following
+      
+      real def_length {
+         IOstatus = "output"; units = "in";
+      }
+      
+      real max_length {
+         IOstatus = "output"; units = "in";
+      }
+      
+      real in_length {
+         IOstatus = "output"; units = "in";
+      }
+      
+      string outPorts[];
+      outPorts {
+         ptrType = "WATEOutputPort";
+      }
+
+      real maxrad;
+            
+      defaultHideLevel = 2;
+      
+      string compressorRef {
+         ptrType = "WATEcompressorBase";
+      }
+
+      string compressorPortRef {
+         ptrType = "WATEInputPort";
+      } 
+     
+      string nozzleRef {
+      }
+
+      string nozzle2Ref {
+      }
+    
+      real at;
+      real ab;
+            
+      real wall_x[];
+      real wall_y[];
+      real center_x[];
+      real center_y[];
+      real frame_x[];
+      real frame_y[];
+      
+      real xn[],yn[],xn2[],yn2[];
+      real xw[],yw[],xw2[],yw2[];
+      real xc[],yc[];
+      real xf[],yf[],xf2[],yf2[];
+      
+      int nacellePts = 4;
+      
+      real rmaxt;
+      
+      real scaley;
+      real scalex;
+      
+      string pnames[];
+      pnames.ptrType = "WATEPort";
+      string outpname;
+      outpname.ptrType = "WATEPort";
+           
+      
+      defaultHideLevel = 0;  // ***** stop hiding
+      
+      WATEOutputPort outPort;
+
+      WATEmaterial acousticMaterial { type = "acousticComposite"; } //rho = 0.09; } //{ type = "_4340_Steel"; }
+      WATEmaterial nacelleMaterial { type = "aluminum"; } //rho = 0.10; } //{ type = "_4340_Steel"; }
+      WATEmaterial firewallMaterial { type = "fireWallDefault"; }
+
+      real linlet;
+      real mostFwdToEngFFLength {
+         units = "ft";
+         description = "length from most forward point on inlet to engine front face";
+      }
+      real lduct;
+      
+      real inletCowlWt;
+      real fanExhaustCowlWt;
+      real bulkheadWt;
+      real nacelleWt;
+      real fanCowlWt;
+      real fanCowlLength;
+      real wtinlt;
+      real throatDoorWt;
+      real coreCowlWt;
+      real ductWt;
+      
+      real fanExhaustLength;
+      real coreCowlLength;
+      real avgCowlDiam;
+      real fanLength;
+      
+      real length_in;
+      real weight_in;
+      
+      // override default in port names
+      wateInPortNames = { };
+   
+      
+      
+   /*
+    * 
+    ******************************************************************/
+   void calcDesignParams() {
+   }
+   
+   
+   /*
+    * 
+    ******************************************************************/
+   void calcBulkheadWt() {
+      bulkheadWt = PI*(maxrad**2-yw[0]**2)*0.1*0.16;
+   }
+   
+
+    /*
+    * 
+    ******************************************************************/
+   void VCinit() { 
+      setArraySizes();
+   }
+   
+   
+  /*
+    * 
+    ******************************************************************/
+   void setArraySizes() { 
+      
+      int wallPts = wall_x.entries();        
+      if(wallPts && xw.entries() != wallPts) {
+         xw.resize(wallPts);
+         yw.resize(wallPts);
+         xw2.resize(wallPts);
+         yw2.resize(wallPts);
+      }
+      
+      int centerPts = center_x.entries();
+      if(centerPts && xc.entries() != 2*centerPts) {
+         xc.resize(2*centerPts);
+         yc.resize(2*centerPts);
+      }
+      
+      if(nacellePts && xn.entries() != nacellePts) {
+         xn.resize(nacellePts);
+         yn.resize(nacellePts);
+         xn2.resize(nacellePts);
+         yn2.resize(nacellePts);
+      }
+      
+      int framePts = frame_x.entries();
+      if(framePts && xf.entries() != framePts) {
+         xf.resize(framePts);
+         yf.resize(framePts);
+         xf2.resize(framePts);
+         yf2.resize(framePts);
+      }
+   }
+       
+   /*
+    * 
+    ******************************************************************/
+   void calculate() {
+
+      real engwate;
+      real tmp;
+      real tmpWt;
+      real bladeLens[];
+      
+      if(nozzle2Ref=="") { nozzle2Ref = nozzleRef; }
+
+      while(1) {  // possibly iterate on LDratio
+         fanLength = 0.0;
+         real maxDiam= 0.0;
+         throatDoorWt= 0.0;
+         bypassDoorWt= 0.0;
+         coreCowlWt = 0.0;
+         wtinlt = 0.0;
+         ductWt = 0.0;
+         fanExhaustLength = 0.0;
+         coreCowlLength = 0.0;
+
+         antiIceWt = 0.0;
+         real rhoNacelle= nacelleMaterial.rho(500);
+
+   //
+   //  assign default values to some variables.
+   //
+         if(LDratio == 0.) { LDratio = def_length; } 
+         
+   //
+   // set the inlet diameter used in weight and length calculations
+   //
+         diameter = 2.0 * outPort.outerRadiusDwn; 
+         real diam2 =0.;
+         if(!(nozzle2Ref == "") && !(nozzle2Ref == nozzleRef)) { 
+            diam2 = 2.0 * nozzle2Ref->inPort.outerRadius; 
+         }
+         if(diam2>diameter) { diameter = diam2; }
+         
+         calcDesignParams();
+         
+         rmaxt = diameter/2.0 + 5.0;
+   //
+   // set the inlet scale factors used in length calculations
+   //
+         real factor = LDratio/def_length;
+         scaley = diameter;
+         scalex = diameter*factor;
+   //
+   // set the default maximum radius as fan face + 5 inches
+   //
+         real twall=5.;
+         if (nacelleDeltaRadius  !=  0.){
+           twall=nacelleDeltaRadius;
+           maxNacelleArea=0.;
+         }
+         if(maxNacelleArea  ==  0) { 
+            maxNacelleArea = PI*(diameter/2.+twall)**2.; 
+         }
+
+ //     maxNacelleArea is added to diameter/2 if it is less than diameter
+ //     and if maxNacelleArea is less than 1, it is the fraction of the
+ //     compressor tip radius to be added.
+         real radd = maxNacelleArea;
+         if ( radd  <  diameter ){
+            if(maxNacelleArea  <  1.) { radd=maxNacelleArea*diameter/2.; }
+            maxNacelleArea = PI*(diameter/2.+radd)**2.;
+         }
+         maxrad = sqrt(maxNacelleArea/PI);
+
+         calcPlotData();
+
+   //
+   // if the weight flag is not set{ go to end of subroutine.
+   //
+        if(calcStructWt) {
+//
+// calculate weight and length of the inlet
+//
+//     air induction for inlets (includes inlets and ducts)
+//
+//     diameter=effective diameter of inlet
+
+            wtinlt = getInletWt() * factor;
+
+            real dduct=diameter/12.;
+            linlet = in_length*dduct;
+            mostFwdToEngFFLength = diameter*LDratio/12.;
+            lduct = get_lduct();
+            real lductf = lduct-lengthSplitDuct;
+      //
+      // calculate inlet duct weight
+      //
+            ductWt=factor*lductf*(1.3113*(diameter/12)**2+1.699*diameter/12-.499)+lengthSplitDuct*(1.3113*dduct**2+1.699*dduct-.499);
+            if (ductWt < 0.) { ductWt=0.; }
+
+      //
+      // calculate inlet bypass door weight
+      //
+            if (bypassDoorType == "2D") {
+               bypassDoorWt=factor*((.00803*Qmax**.55634)*diameter**(1.65852*Qmax**(-.0083)));
+            }
+            else if(bypassDoorType == "AXI") {
+               bypassDoorWt=factor*((.0193*Qmax**.53196)*diameter**(1.6096*Qmax**(-.00506)));
+            }
+
+      //
+      // calculate inlet throat door weight
+      //
+            if (calcThroatDoorWt) {
+               throatDoorWt=factor*((.03928*Qmax**.5317)*diameter**(1.60921*Qmax**(-.005)));
+            }
+
+      //
+      // calculate firewall weight
+      //
+            if(calcFirewallWt){               
+               // ??? loop over all WATEOutputPorts for this engine and
+               // determine max outer radius.  Is there a better way to do this?
+               int i;
+               real fwDensity = firewallMaterial.rho(500);
+               maxDiam = 0.0;
+               for(i=0; i<outPorts.entries(); ++i) {
+                  tmp = outPorts[i]->outerRadius;
+                  if(tmp > maxDiam) { maxDiam = tmp; }
+               }
+               maxDiam *= 2.0;
+               firewallWt = PI*maxDiam*aftEngMntPortRef->axialPosition/144.*fwDensity*firewallThickness; 
+            }
+
+            calcInletCowlWeight();
+
+      //
+      // calculate nacelle/cowl weight - inlet bulkhead
+      //
+            calcBulkheadWt();
+      //
+      // calculate nacelle/cowl weight - fan cowl
+      //
+          // - find the fan/compressor, compute its rotor length, multiply by the circumference, nacelle thickness
+          //   and nacelle density
+
+            bladeLens = compressorRef->bladeLen_stg;
+            if(bladeLens.entries()>0) { fanLength = bladeLens[0]; }
+            else { fanLength = 0.0; }
+            fanCowlWt = 2.0*PI*rmaxt*fanLength*nacelleThickness*rhoNacelle;
+      //
+      // calculate nacelle/cowl weight - fan exhaust cowl
+      //
+            fanExhaustLength = nozzleRef->outPort.axialPosition-fanLength;
+            if(nozzleRef->exists("S_ThrustReverser.length")) {
+               tmp = nozzleRef->S_ThrustReverser.length;
+               fanExhaustLength -= tmp;
+            }
+
+            tmp = nozzleRef->outPort.outerRadius;
+            fanExhaustCowlWt=PI*(rmaxt+tmp)*sqrt((rmaxt-tmp)**2+fanExhaustLength**2)*nacelleThickness*rhoNacelle;
+      //
+      // calculate nacelle/cowl weight - core cowl
+      //
+            if(nozzleRef == nozzle2Ref) { 
+               coreCowlLength=0.0; 
+               coreCowlWt = 0.0;
+            }
+            else {
+               coreCowlLength = nozzle2Ref->outPort.axialPosition - nozzleRef->outPort.axialPosition;
+               coreCowlLength = abs(coreCowlLength);
+               avgCowlDiam = nozzleRef->outPort.innerRadius + nozzle2Ref->outPort.outerRadius; // ri(2,idn1)+ro(2,idn2);
+               tmp = nozzleRef->outPort.innerRadius-nozzle2Ref->outPort.outerRadius;
+               coreCowlWt=PI*avgCowlDiam*sqrt(tmp**2+coreCowlLength*coreCowlLength)*nacelleThickness*rhoNacelle;
+            }
+
+            nacelleWt = inletCowlWt + fanCowlWt + fanExhaustCowlWt + coreCowlWt + acousticWt + antiIceWt + bulkheadWt;
+            weight = wtinlt + ductWt + bypassDoorWt + throatDoorWt + firewallWt + nacelleWt;
+            
+         }
+
+         length = def_length*scalex;
+         if(at>ab) { length += at; }
+         else { length += ab; }
+
+   //     added on 8/14/01 to iterate for desired component length
+   //       specified by the user, by adjusting l/d ratios
+   //
+         if (length_in  >  0.) {
+           real f1 = length_in/length;
+           real f2 = abs(length-length_in)/length_in;
+           if (f2  >  .003) { LDratio *= f1; }
+           else { break; }
+         }
+         else { break; }
+
+      } // end iteration on LDratio
+
+
+            
+      real mxlen = max_length*scalex;
+      if(at>ab) { mxlen += at; }
+      else { mxlen += ab; }
+
+//
+//     total structure weight
+
+      outPort.axialPosition = 0.0;
+
+      // ??? need more accurate calculation of cg
+      cg = -length/2.0;
+
+      if (weight_in >  0.) { weight = weight_in; }
+
+      //mtt total fan cowl length
+      fanCowlLength = fanLength + fanExhaustLength + length;
+   }
+
+   
+   /*
+    * set up the array of x and y coords for the wall plot
+    ******************************************************************/
+   void calcWallPts() {
+      int i;
+
+      int wallPts = wall_x.entries();
+      for(i=0; i<wallPts; ++i) {
+        xw[i] = wall_x[i]*scalex;
+        yw[i] = wall_y[i]*scaley;
+      }
+
+      for(i=0; i<wallPts; ++i) {
+        xw2[i] =  xw[wallPts - i - 1];
+        yw2[i] = -yw[wallPts - i - 1];
+      }
+   }  
+  
+    
+   /*
+    * set up the array of x and y coords for the frame plot
+    ******************************************************************/
+   void calcFramePts() {
+      int i;
+
+      int framePts = frame_x.entries();
+      
+      for(i=0; i<framePts; ++i) { 
+        xf[i] = frame_x[i]*scalex;
+        yf[i] = frame_y[i]*scaley;
+      }
+      for(i=0; i<framePts; ++i) { 
+        xf2[i] =  xf[framePts-i-1];
+        yf2[i] = -yf[framePts-i-1];
+      }
+   }
+    
+    
+   /*
+    * set up the arrays of x and y coords for the plotting routine.
+    ******************************************************************/
+   void calcPlotData() {
+      int i;
+      
+      calcWallPts();
+      
+ //
+ //  centerbody coordinates
+ //
+ //       calcCenterBodyPts();
+        
+ //
+ //  frame coordinates
+ //
+     calcFramePts();
+     
+ //
+ // add the coordinates for the nacelle.
+ // draw nacelle lines if inlet component is specified in ileng
+ //
+     int wallPts = wall_x.entries();
+     
+     if(wallPts==0) { throwError("No wall points are defined"); }
+     
+     xn[0] = xw[wallPts-1];
+     yn[0] = yw[wallPts-1];
+     xn[1] = xn[0]+12.0;
+     yn[1] = yn[0]+12.0*tan(4.*PI/180.);
+     xn[2] = fanFaceToMaxNacelleArea;
+     yn[2] = maxrad;
+     real rcent;
+     real rtmp;
+
+     rcent = nozzleRef->outerCaseInletRR*nozzleRef->inPort.outerRadius; // rcent[ii];
+     rtmp = nozzleRef->inPort.outerRadius;
+     if(rcent <= rtmp) {
+        xn[3] = nozzleRef->outPort.axialPosition; // tleng[idn1];
+        yn[3] = nozzleRef->outPort.outerRadius; // ro[2,idn1];
+     }
+     else {
+        xn[3] = nozzleRef->inPort.axialPosition; // tleng[iup1];
+        yn[3] = rcent; 
+     }
+
+     xn2[0] = xw2[0];
+     yn2[0] = yw2[0];
+
+     xn2[1] = xn2[0]+12.0;
+     yn2[1] = yn2[0]-12.0*tan(4.*PI/180.);
+     xn2[2] = fanFaceToMaxNacelleArea;
+     yn2[2] = -maxrad;
+
+     rcent = nozzleRef->outerCaseInletRR*nozzleRef->inPort.outerRadius; // rcent[ii];
+     xn2[3] = nozzleRef->inPort.axialPosition; // tleng[iup1];
+     yn2[3] = -rcent;
+     rtmp = nozzleRef->inPort.outerRadius;
+     if(rcent <= rtmp) {
+       xn2[3] = nozzleRef->outPort.axialPosition; // tleng[idn1];
+       yn2[3] = nozzleRef->outPort.outerRadius; // ro[2,idn1];
+       yn2[3] = -yn2[3];  // to avoid converter ambiguity from line above
+     }
+   }
+   
+
+   /*
+    * 
+    ******************************************************************/
+   void drawCenterBody() {
+       int i;
+       real centRadius=0.;
+        
+       int centBodyPts = center_x.entries();
+       
+       if(centBodyPts == 0) {
+          centRadius = outPort.innerRadiusDwn;
+          startPath(0.,-centRadius,drawDepth);
+          arcTo(centRadius*1.2,centRadius*1.2,0.,centRadius,0,0,0,0);
+          endPath();
+       }
+       else {
+         for(i=0; i<centBodyPts; ++i) {
+           xc[i] = center_x[i]*scalex;
+           yc[i] = center_y[i]*scaley;
+         }
+         
+         if(!(hasInterface("WATEinlet2D") || hasInterface("WATEinletAxiFixedCenter")) && compressorPortRef != "") {
+            yc[0] = compressorPortRef->innerRadius; // inner rad of fan inport
+         }
+
+         for(i=0; i<centBodyPts; ++i) { 
+           xc[centBodyPts+i] =  xc[centBodyPts-i-1];
+           yc[centBodyPts+i] = -yc[centBodyPts-i-1];
+         }
+         addPolyLine(xc,yc,drawDepth);
+      }
+  }
+   
+      
+   /*
+    * calculate nacelle/cowl weight - inlet cowl
+    ******************************************************************/
+   void calcInletCowlWeight() {
+      inletCowlWt = nacelleThickness*nacelleMaterial.rho(500)*PI*
+            (
+             (yn[0]+yn[1])*sqrt((xn[0]-xn[1])**2+(yn[0]-yn[1])**2)+
+             (yn[1]+maxrad)*sqrt(xn[1]**2+(yn[1]-maxrad)**2)
+            );     
+   }
+
+   
+   /*
+    * this is overridden in a descendent class (WATEinletMDAlowDrag)
+    ******************************************************************/
+   real get_lduct() {   
+      return mostFwdToEngFFLength-linlet;
+   }
+   
+   
+    /*
+    * obtain a list of WATEOutputPorts for later use in the 
+    * calculation of firewall weight (depends upon max radius of engine) 
+    ******************************************************************/
+   int verify() {
+      int ret = 1;
+      string tmp;
+      string nozzles[]={};
+      
+      outPorts = parent.parent.list("WATEOutputPort",1);
+      if(aftEngMntPortRef == "") {
+         error("aftEngMntPortRef must not be blank");
+         ret = 0;
+      }
+      if(compressorRef == "") {
+         compressorRef = findDownStreamComponent("WATEcompressorBase");
+         if(compressorRef == "") {
+            error("compressorRef must not be blank");
+            ret = 0;
+         }
+         else {
+            compressorPortRef = compressorRef + ".inPort";
+         }
+      }
+      if(nozzleRef == "") {
+         nozzles = parent.parent.list("WATEnozzleBase_mod",0);
+         if(nozzles.entries()==1) {
+            nozzleRef = nozzles[0];
+         }
+         else if(nozzles.entries() == 2) {
+            // find main nozzle (not bypass)
+            tmp = findDownStreamComponent("WATEnozzleBase_mod");
+            if(nozzles[0] == tmp) {
+               nozzleRef = nozzles[1]->getName();
+               nozzle2Ref = nozzles[0]->getName();
+            }
+            else {
+               nozzleRef = nozzles[0]->getName();
+               nozzle2Ref = nozzles[1]->getName();
+            }
+         }
+         else if(nozzles.entries() > 2) {
+            error("WATEinletBase cannot handle more than 2 nozzles");
+         }
+         if(nozzleRef == "") {
+            error("nozzleRef must not be blank");
+            ret = 0;
+         }
+      }
+      return ret;
+   }
+   
+   /*
+    * 
+    ******************************************************************/
+   real getInletWt() {
+      return 0.0;
+   }
+      
+   
+   /*
+    * 
+    ******************************************************************/
+    void saveMechDesignData() {
+       des_Wc = componentRef->Fl_I.Wc;
+    }
+      
+  /**
+   * 
+   ******************************************************************/
+   void calcGeometry() {
+      
+     calcWallPts();      
+          
+     if(xw.entries()) { addPolyLine(xw,yw,drawDepth); }
+     if(xw2.entries()) { addPolyLine(xw2,yw2,drawDepth); }
+     
+     if(xn.entries()) { 
+//        addPolyLine(xn,yn,drawDepth); 
+        startPath(xn[0],yn[0],drawDepth);
+        cubicTo(xn[2],yn[2]+yn[2]*.05,xn[2],yn[2]+yn[2]*.05,xn[3],yn[3],0);
+        endPath();
+     }
+     if(xn2.entries()) { 
+//        addPolyLine(xn2,yn2,drawDepth); 
+        startPath(xn2[0],yn2[0],drawDepth);
+        cubicTo(xn2[2],yn2[2]+yn2[2]*.05,xn2[2],yn2[2]+yn2[2]*.05,xn2[3],yn2[3],0);
+        endPath();
+     }
+     
+     setStyle("fill: yellow;");
+     if(xf.entries()) { addPolygon(xf,yf,drawDepth); }
+     if(xf2.entries()) { addPolygon(xf2,yf2,drawDepth); }
+     setStyle("");
+     drawCenterBody();
+   }
+}
+
+
+#endif

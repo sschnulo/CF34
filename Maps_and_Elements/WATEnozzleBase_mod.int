@@ -1,0 +1,648 @@
+
+#ifndef WATENOZZLEBASE_MOD_H
+#define WATENOZZLEBASE_MOD_H
+ 
+//
+// LAST INSPECTION DATE: *not inspected*
+//
+//  EXTERNAL DEPENDENCIES
+//
+//    S_AcousticLiner.area
+//    S_AcousticLiner.material.rho
+//    S_AcousticLiner.thickness
+//    S_AcousticLiner.weight
+//    S_MixerEjector.length
+//    S_MixerEjector.material.rho
+//    S_MixerEjector.weight
+//    S_Plug.S_AcousticLiner.isEmpty()
+//    S_Plug.S_AcousticLiner.weight
+//    S_Plug.length
+//    S_Plug.lengthRatio
+//    S_Plug.material.rho
+//    S_Plug.material.sy
+//    S_Plug.thickness
+//    S_Plug.weight
+//    S_ThrustReverser.weight
+//    S_VariableGeometry.caWt
+//    S_VariableGeometry.miscWt
+//    S_VariableGeometry.weight
+//    VCInterface* diamSettingComp
+//    wtmisc
+
+extern real S_AcousticLiner.weight;
+extern real S_MixerEjector.weight;
+extern real S_ThrustReverser.weight;
+extern real S_Plug.weight;
+extern real S_Plug.lengthRatio;
+extern real S_Plug.material.sy;
+extern real S_VariableGeometry.weight;
+extern int S_Plug.S_AcousticLiner.isEmpty();
+extern real S_Plug.length;
+extern real S_Plug.lengthRatio;
+
+
+//
+//   description:	calculates weight & dimensions of nozzles.
+//
+
+class WATEnozzleBase_mod extends WATEelement
+{ 
+   //IWMEC(8) - diamSettingComp & diamSettingLoc used to set IWMEC(8)
+   string diamSettingComp {
+     value = "";    IOstatus = "input" ;    units = "none";
+     description = "Full path name of the element setting the inlet diameter. If blank, then outlet of feeding component used" ;
+   }
+
+   Option diamSettingLoc {
+     trigger = 0;
+     allowedValues = { "Outlet", "Inlet" }
+     value = "Outlet";    IOstatus = "input" ;    units = "none";
+     description = "Location on setting component used to set diameter" ;
+   }
+
+   //IWMEC(13)
+   int calcComponentThickness {
+      value = 0;  IOstatus = "input";
+      description = "if TRUE, program will do thickness calculation. Otherwise thickness specified in default array";
+   }
+   
+   //DESVAL(1)
+   real  MNin {
+     value = 0.0;    IOstatus = "input";    units = "none" ;
+     description = "Nozzle inlet Mach number" ;
+   }
+
+   //DESVAL(4)
+   real LDratio {
+     value = 1.0 ;    IOstatus = "input";    units = "none" ;
+     description = "Length to diameter ratio" ;
+   }
+
+   //DESVAL(6)
+   real throatLocationFrac {
+     value = 0.75;    IOstatus = "input";    units = "none";
+     description = "Nozzle throat location as fraction of nozzle length." ;
+   }
+
+   //DESVAL(7)
+   real throatArea_in {
+     IOstatus = "input";    units = "in2" ;
+     description = "Nozzle thoat area." ;
+   }
+   real throatArea {
+     IOstatus = "output";    units = "in2" ;
+     description = "Nozzle thoat area. If throatArea_in not set, get from aero element" ;
+   }
+
+   //DESVAL(8)
+   real  exitArea_in {
+     IOstatus = "input";    units = "in2" ;
+     description = "Nozzle exit area." ;
+   }
+   real  exitArea {
+     IOstatus = "output";    units = "in2" ;
+     description = "Nozzle exit area. If exitArea_in not set, get from aero element" ;
+   }
+
+   //DESVAL(11)
+   real  outerCaseInletRR {
+     value = 1.0;    IOstatus = "input";    units = "none" ;
+     description = "" ;
+     // ??? this appears to be used in axisymetric nozzle calcs also
+   }
+
+   //DESVAL(17)
+   real thickness {
+     value = 0.0 ;    IOstatus = "input";    units = "in" ;
+     description = "Nozzle material thickness" ;
+   }
+
+   //DESVAL(18)
+   real  wtCorrelation {
+     value = 1.0;    IOstatus = "input";    units = "none" ;
+     description = "Nozzle weight correlation factor" ;
+   }
+
+   //DESVAL(53)
+   real  transDuctLDratio{
+     value = 0.0;    IOstatus = "input";    units = "none" ;
+     description = "2-D transition duct L/D ratio in 2-D nozzles" ;
+   }
+
+   //DESVAL(54)
+   real  flapThicknessAng {
+     value = 4.0;    IOstatus = "input";    units = "deg" ;
+     description = "Nozzle flap thickness angle" ;
+   }
+ 
+   //DESVAL(99)
+   real weight_in {
+     value = 0.0 ;    IOstatus = "input";    units = "in" ;
+     description = "Sets the nozzle weight, will override WATE callculation " ;
+   }
+
+   //DESVAL(100)
+   real  length_in {
+     value = 0.0 ;    IOstatus = "input";    units = "in" ;
+     description = "Sets the nozzle length. If given, LDratio is adjusted to yield given length";
+   }
+   
+   real Fg {
+      IOstatus = "output"; units = "lbf";
+      description = "gross thrust of corresponding aero nozzle component";
+   }
+   
+   real mixerEjLength {
+      IOstatus = "output"; units = "in";
+      description = "length of mixer ejector (0 if not present)";
+   }
+   
+   real fy[2];
+   
+   // design values
+   FlowStation des_Fl_Th;
+   real des_Fg;
+
+   MaxSaver max_TtIn {
+      var = "Fl_I.Tt";
+   }
+   
+   MaxSaver max_PtIn {
+      var = "Fl_I.Pt";
+   }
+   
+   MaxSaver max_PsIn {
+      var = "Fl_I.Ps";
+   }
+   
+   MaxSaver max_Ath {
+      var = "Ath";
+      associatedVars = { "Fl_O.Aphy" };
+   }
+   
+   WATEmaterial material { type = "A_286"; }
+   WATEmaterial caseMaterial { type = "A_286"; }
+
+   WATEInputPort inPort;
+   
+   WATEOutputPort outPort {
+      linkRequired = 0;
+   }
+   
+   Socket S_ThrustReverser;
+   Socket S_MixerEjector;
+   Socket S_Plug;
+   Socket S_VariableGeometry;
+   Socket S_AcousticLiner;
+
+   
+   real timax=1000.;
+   real transDuctWt;
+   real nozzleWt;
+   real caseWt;
+   real innerCaseWt;
+   real outerCaseWt;
+   real caseArea;
+   
+   real throatLocation;
+   real transDuctLength;
+   real throatInnerRadius; 
+   real throatOuterRadius;
+   real inletInnerRadius;   
+   
+   defaultHideLevel = 2;
+   
+   real rin;
+   real xrout;
+   real pomax;
+   real ro1;
+   real ro2;
+   real ri1;
+   real ri2;
+   real ro5;
+   real ro6;
+   real str;
+   real xnz;
+   
+   defaultHideLevel = 0;
+   
+   void calculate() {
+      real area,acarea,tacarea;
+      
+      weight = 0.0;
+      length = 0.0;
+      
+      timax = max_TtIn.val;
+      
+      Fg = des_Fg;
+
+//
+//  define some dimensional variables
+//
+      ro1 = inPort.outerRadiusUp;
+      ri1 = inPort.innerRadiusUp;
+      ro5 = ro1*outerCaseInletRR;
+      ro6 = 0.0;
+
+      str = material.sy(timax);
+      
+//
+// set the default values for the desval's if necessary
+//
+      setDefaults();
+      
+      //??? the variables xrout and rin are changed potentially several times
+      // throughout this routine, and their values are used BEFORE their final  
+      // calculation is complete. This is most likely incorrect, but is being
+      // left for now in order to match WATE results
+//
+//  set the nozzle entrance outer raduis
+//
+      if(diamSettingComp == "") {
+         xrout = ro1; // ro(2,nodei);
+      }
+      else {
+         if(diamSettingLoc == "Outlet") {
+           xrout = diamSettingComp->outPort.outerRadius; // ro(2,ncr);
+         } 
+         else if(diamSettingLoc == "Inlet"){
+           xrout = diamSettingComp->inPort.outerRadius; // ro(1,ncr);
+         }
+      }
+     
+//
+//  set the nozzle entrance inner radius.
+//
+      rin  = ri1; // ri(2,nodei);
+//
+// set entrance, throat and exit areas.  note that entrance and throat
+// areas are annulus areas and the exit area is a disk area.
+//
+      if(throatArea_in  ==  0.)  { 
+         throatArea = max_Ath.val; 
+         //throatArea = componentRef->Ath;
+      }
+      else {
+         throatArea = throatArea_in;
+      } 
+      if(exitArea_in  ==  0.) { 
+         exitArea = max_Ath.associatedVals[0]; 
+         //exitArea = componentRef->Fl_O.Aphy;
+      } 
+      else {
+         exitArea = exitArea_in;
+      } 
+
+      real ptm;
+      real gamth;
+      real aent;
+      real thPt,thTt;
+      real gamP1;
+      real gamM1;
+      real aent2;
+
+
+      if(MNin  >  0.) {
+         ptm = max_PtIn.val; // tmpres(nodei);
+         
+         // ??? here again, WATE uses the values of throat Tt and Pt
+         // at the CURRENT POINT and NOT at the DESIGN POINT. This is
+         // most likely incorrect
+	   // JSS Nevermind - WATE was right - need to size nozzle for max condition not ADP
+
+//#ifdef WATE_LEGACY
+         thPt = componentRef->Fl_Th.Pt;
+         thTt = componentRef->Fl_Th.Tt;
+         gamth = componentRef->Fl_Th.gamt;
+//#else
+//         gamth = des_Fl_Th.gamt;
+//         thPt = des_Fl_Th.Pt;
+//         thTt = des_Fl_Th.Tt;
+//#endif      
+   gamP1 = gamth+1;
+   gamM1 = gamth-1;
+
+   
+//cout << "*******  AENT CALCULATION *******\n";
+//cout << "throat area = " << throatArea <<"\n";
+//cout << "MNin = " << MNin <<"\n";
+//cout << "gamP1 = " << gamP1 <<"\n";	
+//cout << "gamM1 = " << gamM1 <<"\n";
+//cout << "gamth = " << gamth <<"\n";
+
+  //  aent2 = throatArea*(thPt/ptm)*sqrt(timax/thTt)*
+  //              (1/MNin)*((2./(gamth+1.))*(1.+(gamth-1.)/2.*MNin*MNin))**
+  //             ((gamth+1.)/(2.*(gamth-1.)));
+
+	aent = throatArea/MNin*((gamP1/2)/(1+(gamM1/2)*MNin**2))**(gamP1/(2-2*gamth));
+//cout << "aent = " << aent <<"\n";
+//cout << "aent2 = " << aent2 <<"\n";
+      }
+      else {
+         aent = PI*(xrout*xrout - rin*rin);
+      }
+//
+// calculate entrance outer radius if inner radius is specified.  for
+// fan nozzles only.  this first if is for the case where a
+// nozzle is connected to a split fan as described by nasa mods.
+//
+      if(inPort.innerRadius  !=  0.){
+        rin = inPort.innerRadius;
+        xrout = sqrt(rin*rin + aent/PI);
+      } 
+      else if(inletInnerRadius  >  0.){
+        rin  = inletInnerRadius;
+        xrout = sqrt(rin*rin + aent/PI);
+      } 
+      else if(MNin  >  0.){
+        rin = sqrt(xrout*xrout - aent/PI);
+      }
+//
+//  set the entrance dimensions for plotting and output summary
+//
+      if (diamSettingComp != "" && diamSettingLoc == "Outlet") {
+         rin=diamSettingComp->outPort.innerRadius;
+         xrout = diamSettingComp->outPort.outerRadius; 
+      }
+
+      inPort.innerRadius = rin;
+      inPort.outerRadius = xrout;
+      ro1 = xrout;
+            
+//
+// calculate nozzle length and the axial position of the throat and
+// plug.
+//
+      if (length_in  >  0.) { 
+         length = length_in; 
+      }
+      else {
+         length = 2.*xrout*LDratio;
+      }
+      
+      throatLocation = throatLocationFrac*length;
+      
+      outPort.axialPosition = inPort.axialPosition + length;
+      
+//  calculate thickness based on maximum static pressure
+      pomax=max_PsIn.val; // smpres(nodei);
+
+      if (str  ==  0.) { str = 80000.; }
+      
+      calcThickness();
+ 
+//
+// calculate the nozzle exit inner and outer radii.
+      
+      calcNozzleExitRadii();
+
+      ro2 = outPort.outerRadius;
+      ri2 = outPort.innerRadius;
+//
+// determine 2-d transition duct length & mixer ejector length
+//
+      transDuctLength = 2.*transDuctLDratio*inPort.outerRadius; // ro(1,nodei);
+
+      if(!S_MixerEjector.isEmpty()) {
+         S_MixerEjector.execute();
+         mixerEjLength = S_MixerEjector.length;
+         weight += S_MixerEjector.weight;
+      }
+
+      xnz = length - transDuctLength - mixerEjLength;
+      
+// determine nozzle throat inner and outer radii
+//
+      calcThroatRadii();
+      
+//
+//  calculate nozzle exit inner radius for plotting with external plug
+//
+      if(!S_Plug.isEmpty() && S_Plug.lengthRatio  >  1.0) { 
+         outPort.innerRadius=throatInnerRadius*
+                           (1.0-(length-throatLocation)/
+                                 (S_Plug.lengthRatio*length-throatLocation)); 
+      }
+  
+      if(!S_Plug.isEmpty()) {
+         S_Plug.execute();
+         weight += S_Plug.weight;
+      }
+
+//
+//  calculate weight of transition duct
+//
+      calcTransDuctWt();
+      
+//
+//  calculate the weight of an axi-symmetric nozzle
+//
+      xnz = length - transDuctLength - mixerEjLength;
+    
+      calcNozzleWt();
+      
+      weight += nozzleWt;
+       
+      if(!S_ThrustReverser.isEmpty()) {
+         S_ThrustReverser.execute();
+         weight += S_ThrustReverser.weight;
+      }
+      
+      if(!S_VariableGeometry.isEmpty()){
+        S_VariableGeometry.execute();
+        weight += S_VariableGeometry.weight;
+      }
+ 
+      if (weight_in >  0.) {
+         weight = weight_in;
+      }
+ 
+//
+// determine fan - core nozzle fairing end point radii
+//
+      calcFairingEndRadii();
+
+      cg = length/2.0+inPort.axialPosition;
+   }
+ 
+   
+   /**
+    *
+    ***********************************************************************/
+  void setDefaults()
+  {     
+     if(LDratio  ==  0.) { LDratio = 1.0; }
+
+     if(throatLocationFrac  ==  0.) { throatLocationFrac=0.75; }
+     else if(throatLocationFrac  >  1.) { throatLocationFrac=1.0; }
+
+//
+// move nozzle wall thickness calculation to after outer radius is
+// calculated.  this allows the pressure to set the thickness if not
+// already specified in the inputs.
+//
+      if(!S_AcousticLiner.isEmpty()) {
+         if(S_AcousticLiner.thickness  ==  0.) { S_AcousticLiner.thickness = 0.1; }
+      }
+ 
+      if(outerCaseInletRR < 1.0) { outerCaseInletRR = 1.0; } 
+  }
+
+  
+  
+   /**
+    *
+    ***********************************************************************/
+  void calcNozzleExitRadii()
+  {
+      real opor = outPort.outerRadius;
+
+      // core nozzles:
+      if(opor  >  0) { xrout = opor; }
+      if(opor == 0 || (!S_Plug.isEmpty() && S_Plug.lengthRatio < 1.0)) {
+        rin = 0.0;
+        xrout = sqrt(rin*rin + exitArea/PI);
+      } 
+      else {
+        rin = sqrt(xrout*xrout - throatArea/PI);
+      }
+ 
+      outPort.innerRadius = rin;
+      outPort.outerRadius = xrout;
+   }  
+
+   
+   /**
+    *
+    ***********************************************************************/
+   void calcTransDuctWt()
+   {
+      real tduct,xl,tpluga;
+      real plugThickness,rhoPlug;
+      
+   //  compute transition duct thickness if calcComponentThickness=1.  compute plug
+   //  thickness if calcComponentThickness=1.
+      if(calcComponentThickness  ==  1){
+         tduct = pomax*ro1/(str);
+         if(tduct  <  0.10) { tduct=0.10; }
+      }
+      else {
+         tduct = thickness;
+      }
+      transDuctWt = 2.0*PI*ro1*transDuctLength*tduct*material.rho(timax);
+      if(!S_Plug.isEmpty() && S_Plug.lengthRatio  >  1.0){
+        plugThickness = S_Plug.thickness;
+        rhoPlug = S_Plug.material.rho(timax);
+        xl = 0.8 * transDuctLength;
+// compute thickness for conical plug.
+        if(calcComponentThickness  ==  1){
+           tpluga = atan2(ri1,xl);
+           plugThickness = pomax*ri1/(S_Plug.material.sy(timax)*cos(tpluga));
+           if(plugThickness  <  0.10) { plugThickness=0.10; }
+        }
+        transDuctWt += PI*ri1*sqrt(ri1**2 + xl**2)*plugThickness*rhoPlug;
+      } 
+   }   
+   
+   
+   /**
+    *
+    ***********************************************************************/
+   void calcThroatRadii() {
+      real ipir = inPort.innerRadiusUp;
+      if(!S_Plug.isEmpty() && S_Plug.lengthRatio  <=  1.0) {
+        if(throatLocation  <=  S_Plug.length) {
+          throatInnerRadius = -ipir/S_Plug.lengthRatio*length*throatLocation
+                              +ipir;
+          throatOuterRadius = sqrt(throatInnerRadius*throatInnerRadius+throatArea/PI);
+        } 
+        else {
+          throatInnerRadius = 0.0;
+          throatOuterRadius = sqrt(throatArea/PI);
+        }
+      } 
+      else {
+        throatOuterRadius = (outPort.outerRadius-inPort.outerRadiusUp)/xnz*(throatLocation-transDuctLength-mixerEjLength)+inPort.outerRadiusUp;
+        throatInnerRadius = sqrt(throatOuterRadius*throatOuterRadius-throatArea/PI);
+      }
+   }
+   
+   
+   /**
+    * calc nozzle weight for axi convergent nozzle
+    ***********************************************************************/
+   void calcNozzleWt() {
+       real rhocase = caseMaterial.rho(timax);
+       real tcase,tocase;
+       innerCaseWt = 0.;
+       outerCaseWt = 0.;
+       
+// compute the thickness of the axisymmetric case using average
+// radius
+       if(calcComponentThickness  ==  1){
+          tcase = pomax*((ro1+ro2)/2.)/(str);
+          if(tcase  <  0.10) { tcase=0.10; }
+          tocase = pomax*((ro5+ro2)/2.)/(str);
+          if(tocase  <  0.10) { tocase=0.10; }
+       }
+       else {
+          tcase = thickness;
+          tocase = thickness; 
+       }
+       
+       caseArea = PI*(ro1+ro2)*sqrt((ro1-ro2)**2+xnz*xnz);
+       caseWt = caseArea*tcase*rhocase;
+       
+       if(outerCaseInletRR  !=  1.){          
+          outerCaseWt = PI*(ro5+ro2)*sqrt((ro5-ro2)**2+length**2)*tocase*rhocase;
+          ro6 = (ro2-ro5)/xnz*(throatLocation-transDuctLength-mixerEjLength) + ro5;
+       }
+
+       if(!S_AcousticLiner.isEmpty()) {
+          S_AcousticLiner.area = caseArea;
+          S_AcousticLiner.execute();
+          caseWt += S_AcousticLiner.weight;
+       }
+       
+       caseWt += outerCaseWt;
+       nozzleWt = (caseWt + transDuctWt) * wtCorrelation;
+       
+   }
+ 
+   
+   /**
+    *
+    ***********************************************************************/
+   void calcFairingEndRadii() {
+      fy[1]=-1.0;
+      fy[0] = outPort.outerRadius; 
+   }
+   
+   
+   /**
+    *
+    ***********************************************************************/
+   void calcThickness() {
+      if(thickness  ==  0.) {
+        thickness=pomax * xrout*2.0/(2.0*str);
+        if(thickness  <  0.10) { thickness=0.10; }
+      }
+   }
+   
+   
+   /**
+    *
+    ***********************************************************************/
+   void saveMechDesignData() {
+      des_Fg = componentRef->Fg;
+      des_Fl_Th.copyFlowStatic(componentRef+".Fl_Th");
+      
+      if(!S_ThrustReverser.isEmpty()) { S_ThrustReverser.child.saveMechDesignData(); }
+      if(!S_MixerEjector.isEmpty()) { S_MixerEjector.child.saveMechDesignData(); }
+      if(!S_Plug.isEmpty()) { S_Plug.child.saveMechDesignData(); }
+      if(!S_VariableGeometry.isEmpty()) { S_VariableGeometry.child.saveMechDesignData(); }
+      if(!S_AcousticLiner.isEmpty()) { S_AcousticLiner.child.saveMechDesignData(); }
+   }  
+}
+   
+#endif

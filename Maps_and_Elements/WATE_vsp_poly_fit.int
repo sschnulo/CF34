@@ -1,0 +1,190 @@
+//http://www.google.com/codesearch/p?hl=en#wPQ5mmYid5A/trunk/libwcs/polfit.c&q=polynomial%20fit%20lang:c&sa=N&cd=43&ct=rc
+
+//static real determ();
+/////////////////////////////////////////////////////////////////////////////////////////////
+
+/*--- Calculate the determinant of a square matrix
+ *    This subprogram destroys the input matrix array
+ *    From Bevington, page 294.
+ */
+
+real determ (real array[], int norder)
+//real  *array;         /* Input matrix array */
+//int     norder;         /* Order of determinant (degree of matrix) */
+{
+    real save, det;
+    int i,j,k,k1, zero;
+
+    //cout << "*************************** ARRAY.ENTRIES() = " << array.entries() << " norder=" << norder << endl;
+ 
+    det = 1.0;
+    for (k = 0; k < norder; k++) {
+
+        /* Interchange columns if diagonal element is zero */
+        if (array[k+k*norder] == 0) {
+            zero = 1;
+            for (j = k; j < norder; j++) {
+              if (array[k+j*norder] != 0.0) {
+                    zero = 0;
+              }
+                }
+            if (zero) {
+                return (0.0);
+            }
+            for (i = k; i < norder; i++) {
+                save = array[i+j*norder];
+                array[i+j*norder] = array[i+k*norder];
+                array[i+k*norder] = save ;
+                }
+            det = -det;
+            }
+
+        /* Subtract row k from lower rows to get diagonal matrix */
+        det = det * array[k+k*norder];
+        if (k < norder - 1) {
+            k1 = k + 1;
+            for (i = k1; i < norder; i++) {
+                for (j = k1; j < norder; j++) {
+                    array[i+j*norder] = array[i+j*norder] -
+                                      (array[i+k*norder] * array[k+j*norder] /
+                                      array[k+k*norder]);
+                    }
+                }
+            }
+        }
+        return (det);
+}
+
+
+/////////////////////////////////////////////////////////////////////////////////////////////
+
+real[] polfit (real x[], real y[], real x0, int npts, int nterms)
+//real  *x;             /* Array of independent variable points */
+//real  *y;             /* Array of dependent variable points */
+//real  x0;             /* Offset to independent variable */
+//int     npts;           /* Number of data points to fit */
+//int     nterms;         /* Number of parameters to fit */
+//real  *a;             /* Vector containing current fit values */
+//real  *stdev;         /* Standard deviation of fit (returned) */
+{
+    real sigma2sum;
+    real xterm,yterm,xi,yi;
+    real sumx[], sumy[];
+    real array[];
+    int i,j,k,l,n,nmax;
+    real delta;
+
+    real stdev = 0.0;
+    real a[];
+
+    a.resize(nterms);
+
+    /* accumulate weighted sums */
+    nmax = 2 * nterms - 1;
+    sumx.resize(nmax);
+    sumy.resize(nterms);
+    for (n = 0; n < nmax; n++) {
+        sumx[n] = 0.0;
+    }
+    for (j = 0; j < nterms; j++) {
+        sumy[j] = 0.0;
+    }
+    for (i = 0; i < npts; i++) {
+        xi = x[i] - x0;
+        yi = y[i];
+        xterm = 1.0;
+        for (n = 0; n < nmax; n++) {
+            sumx[n] = sumx[n] + xterm;
+            xterm = xterm * xi;
+            }
+        yterm = yi;
+        for (n = 0; n < nterms; n++) {
+            sumy[n] = sumy[n] + yterm;
+            yterm = yterm * xi;
+            }
+        }
+
+    /* Construct matrices and calculate coeffients */
+    array.resize( (nterms+1)*(nterms+1) );
+    for (j = 0; j < nterms; j++) {
+        for (k = 0; k < nterms; k++) {
+            n = j + k;
+            array[j+k*nterms] = sumx[n];
+            }
+        }
+    delta = determ (array, nterms);
+    if (delta == 0.0) {
+        stdev = 0.0;
+        for (j = 0; j < nterms; j++) {
+            a[j] = 0.0 ;
+        }
+        array.resize(0);
+        sumx.resize(0);
+        sumy.resize(0);
+        return;
+        }
+
+    for (l = 0; l < nterms; l++) {
+        for (j = 0; j < nterms; j++) {
+            for (k = 0; k < nterms; k++) {
+                n = j + k;
+                array[j+k*nterms] = sumx[n];
+                }
+            array[j+l*nterms] = sumy[j];
+            }
+        a[l] = determ (array, nterms) / delta;
+        }
+
+    /* Calculate sigma */
+    sigma2sum = 0.0;
+    for (i = 0; i < npts; i++) {
+        yi = polcomp (x[i], x0, nterms, a);
+        sigma2sum = sigma2sum + ((y[i] - yi) * (y[i] - yi));
+        }
+    stdev = sqrt (sigma2sum / toReal(npts - 1));
+
+    array.resize(0);
+    sumx.resize(0);
+    sumy.resize(0);
+    
+    //cout << "STDEV = " << stdev << endl;
+    //cout << "COEF = " << a << endl;
+
+    // FLIP THE COEF ORDER
+    real aout[];
+    aout.resize(a.entries());
+    for( i = 0 ; i < a.entries() ; i++ ) {
+      aout[i] = a[a.entries()-1-i];
+    }
+    a.resize(0);
+    return(aout);
+}
+
+
+/////////////////////////////////////////////////////////////////////////////////////////////
+
+/* POLCOMP -- Polynomial evaluation
+ *      Y = A(1) + A(2)*X + A(3)*X**2 + A(3)*X**3 + . . . */
+
+real polcomp (real xi, real x0, int norder, real a[])
+//real  xi;     /* Independent variable */
+//real  x0;     /* Offset to independent variable */
+//int     norder; /* Number of coefficients */
+//real  *a;     /* Vector containing coeffiecients */
+{
+    real xterm, x, y;
+    int iterm;
+
+    /* Accumulate polynomial value */
+    x = xi - x0;
+    y = 0.0;
+    xterm = 1.0;
+    for (iterm = 0; iterm < norder; iterm++) {
+        y = y + a[iterm] * xterm;
+        xterm = xterm + x;
+        }
+    return (y);
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////
+

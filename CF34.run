@@ -1,0 +1,117 @@
+//
+//------------------------------------------------------------------------
+//                                                                       |
+//   File Name:     CF34.run                                             |
+//   Date(s):       October, 2009						            	 |
+//   Author:        Jeff Berton, after Scott Jones and G Tech		     |
+//                                                                       |
+//   Description:   File to run the CF34-8C5 Engine Model                |
+//                                                                       |
+//------------------------------------------------------------------------
+
+cout << "\n\nSTART RUN:  \n\n";
+#include <CF34.mdl>
+#include <CF34.fnc>
+#include <flight_decks.fnc>
+
+//----------------------------------------------------------------------------
+//  Enter changes to Baseline Engine (CF34.mdl) here:
+//----------------------------------------------------------------------------
+
+
+//----------------------------------------------------------------------------
+//       Aerodynamic Design Case:
+//----------------------------------------------------------------------------
+setOption( "switchDes", "DESIGN" );
+cout << "Running the aerodynamic design point." << endl;
+MODELNAMEALT = "Aerodynamic Design Point (M0.80/35kft/ISA+0)";
+solver.maxJacobians  = 50;
+solver.maxIterations = 100;
+PC = 50;
+CASE = 0;
+// Set up the design point balances:
+autoSolverSetup(); 
+// The use of autoSolverSetup in design mode requires the following balance bookkeeping.
+// The dependents dep_BleedFlow1 and dep_BleedFlow2 are automatically set in CoolIt.int 
+// when autoSolverSetup is invoked, so either companion independent balances require setup,  
+// or the dependent balances require removal.  Since cooling logic may be invoked below, 
+// these dependent balances need to be removed here:
+solver.removeDependent( "HPT.Cool.dep_BleedFlow1" );
+solver.removeDependent( "HPT.Cool.dep_BleedFlow2" );
+solver.removeDependent( "LPT.Cool.dep_BleedFlow1" );
+solver.removeDependent( "LPT.Cool.dep_BleedFlow2" );  
+verify();
+run(); 
+page.display(); 
+
+//----------------------------------------------------------------------------
+//       Turbine cooling calculations:
+//----------------------------------------------------------------------------
+#include <CoolingLogic.int>
+
+//----------------------------------------------------------------------------
+//      Off-Design Case:
+//----------------------------------------------------------------------------
+setOption( "switchDes", "OFFDESIGN" );
+cout << "Rerunning the aerodynamic design point as an off-design case." << endl;
+MODELNAMEALT = "Aerodynamic Design Point (Rerun as Off-Design)";
+autoSolverSetup(); 
+verify();
+PC = 50;
+run();
+page.display(); 
+
+//----------------------------------------------------------------------------
+//      Set up turbomachinery map plotting:
+//----------------------------------------------------------------------------
+#include <mapplot.fnc>
+createMapDataFiles();
+saveOpPoint(""); // Save the ADP operating point
+
+//----------------------------------------------------------------------------
+//      All subsequent runs typically use burner FAR as the independent:
+//----------------------------------------------------------------------------
+Burner.switchBurn = "FAR";
+
+// ===============================================
+//      Run engine reference points:
+// ===============================================
+#include <CF34.RefPoints.case>;
+
+//----------------------------------------------------------------------------
+//      Plot Turbomachinery Maps
+//----------------------------------------------------------------------------
+// Verified to work with Python v2.6.6, along with numpy v1.8.1 and
+// Matplotlib v1.2.1 for Windows.  Higher versions of these are buggy.
+// The file extension ".py" must be recognizable by Python v2.6.
+saveOpPoint("DONE");
+//cout << "Plotting the reference points on turbomachinery maps." << endl;
+//system( "Map_plotting\mapplot.py" );
+
+// =============================================
+//         E I N O X   C A S E   S E T 
+// =============================================
+
+#include <CF34.EI.case>;
+
+// =============================================
+//           W A T E   C A S E   S E T 
+// =============================================
+// Baseline wate++ model definitions and setup:
+#include <CF34.wate++.mdl>
+// Changes to the baseline model specific to the CF34-8C:
+#include <CF34.wate++.blchanges.list>
+// Run wate++:
+#include <CF34.wate++.case>
+
+// ===============================================
+// F L I G H T   E N V E L O P E   C A S E   S E T
+// ===============================================
+
+//#include <CF34.FltEnv.case>
+
+
+cout << "COMPLETED RUN" << endl;
+
+
+

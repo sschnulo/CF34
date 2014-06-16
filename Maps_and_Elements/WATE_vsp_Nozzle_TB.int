@@ -1,0 +1,166 @@
+
+#ifndef _WATE_vsp_Nozzle_TB__INT
+#define _WATE_vsp_Nozzle_TB__INT
+
+#include "WATE_vsp_COMMON_TB.int"
+
+/**
+ *Author: Tim Unton
+ *Updated: 4/21/10
+ ****************************************************************/
+class WATE_vsp_Nozzle_TB extends WATE_vsp_common_TB
+{
+
+  /**
+   *
+   ****************************************************************/
+  void update() {
+    string ts;
+    real colors[3];
+
+
+//Seidel omitted
+/*
+    // DUMPS THE COMPONENTS VARIABLES
+    printValue(comp_name->list("Variable", TRUE));
+
+    cout << comp_name << ": " << endl;
+    cout << "INPORT: " << endl;
+    cout << "    INNER RADIUS   : " << comp_name->inPort.innerRadius << endl;
+    cout << "    OUTER RADIUS   : " << comp_name->inPort.outerRadius << endl;
+    cout << "    AXIAL POSITION : " << comp_name->inPort.axialPosition << endl;
+    //printValue(comp_name->inPort.list("Variable", FALSE));
+
+
+    cout << "OUTPORT: " << endl;
+    cout << "    INNER RADIUS   : " << comp_name->outPort.innerRadius << endl;
+    cout << "    OUTER RADIUS   : " << comp_name->outPort.outerRadius << endl;
+    cout << "    AXIAL POSITION : " << comp_name->outPort.axialPosition << endl;
+    //printValue(comp_name->outPort.list("Variable", FALSE));
+*/
+
+    int pad = 4; 
+    filledBlock = { }; 
+    
+    real xp[] = {};
+    real yp[] = {};
+    real zp[] = {};
+    int sect_type[] = {};
+
+
+    int rc;
+    int returned_vps_child_pointers[] = {};
+    int vsp_pointer = randomInt(1,9999999999);
+    int vsp_child_pointers[] = {};
+    int vsp_parent_pointer = 0;
+
+    // TRANS DUCT SURFACE
+    if( comp_name->transDuctLength > 0.0 ) {
+      xp.resize(0);
+      yp.resize(0);
+      zp.resize(0);
+      sect_type.resize(0);
+
+      colors[$R] = 155.0;
+      colors[$G] = 255.0;
+      colors[$B] = 200.0;
+    
+      xp.append(comp_name->inPort.axialPosition);
+      yp.append(comp_name->inPort.outerRadius * 2.0);
+    
+      xp.append(comp_name->inPort.axialPosition + comp_name->transDuctLength);
+      yp.append(comp_name->inPort.outerRadius * 2.0);
+    
+      ts = comp_name->getName() + "_:_TRANS";
+      returned_vps_child_pointers = add_fuse_from_points(xp, yp, xp.entries(), ts, colors[$R], colors[$G], colors[$B], 0, pad, vsp_pointer);
+      for( rc = 0 ; rc > returned_vps_child_pointers.entries() ; rc++ ) {
+        vsp_child_pointers.append( returned_vps_child_pointers[rc] );
+      }
+      returned_vps_child_pointers.resize(0);
+    }
+
+    // OUTER DUCT SURFACE
+    xp.resize(0);
+    yp.resize(0);
+    zp.resize(0);
+    sect_type.resize(0);
+
+    colors[$R] = 255.0;
+    colors[$G] = 155.0;
+    colors[$B] = 200.0;
+
+    xp.append(comp_name->inPort.axialPosition + comp_name->transDuctLength);
+    yp.append(comp_name->inPort.outerRadius * 2.0);
+    //zp.append(comp_name->inPort.outerRadius * 2.0);
+    //sect_type.append($VSP_FUSE2_CIRCLE);
+
+    xp.append(comp_name->outPort.axialPosition);
+    yp.append(comp_name->outPort.outerRadius * 2.0);
+    //zp.append(comp_name->outPort.outerRadius * 2.0);
+    //sect_type.append($VSP_FUSE2_BOX);
+
+    ts = comp_name->getName() + "_:_OUT";
+    //add_fuse2_from_points(xp, yp, zp, sect_type, xp.entries(), ts, colors[$R], colors[$G], colors[$B], 3, pad);
+    returned_vps_child_pointers = add_fuse_from_points(xp, yp, xp.entries(), ts, colors[$R], colors[$G], colors[$B], 3, pad, vsp_pointer);
+    for( rc = 0 ; rc > returned_vps_child_pointers.entries() ; rc++ ) {
+      vsp_child_pointers.append( returned_vps_child_pointers[rc] );
+    }
+    returned_vps_child_pointers.resize(0);
+
+    xp.resize(0);
+    yp.resize(0);
+    zp.resize(0);
+    sect_type.resize(0);
+
+
+    if( ! comp_name->S_AcousticLiner.isEmpty() ) {
+//     cout << "NOZZLE: TBD ADD AcousticLiner" << endl;  //Seidel omitted
+    }
+
+    if( ! comp_name->S_MixerEjector.isEmpty() ) {
+//      cout << "NOZZLE: TBD ADD MixerEjector" << endl;  //Seidel omitted
+    }
+
+    if( ! comp_name->S_Plug.isEmpty() ) {
+//      cout << "NOZZLE: TBD ADD Plug" << endl;  //Seidel omitted
+      // PLUG SURFACE
+
+      xp.resize(0);
+      yp.resize(0);
+      zp.resize(0);
+      sect_type.resize(0);
+
+      colors[$R] = 155.0;
+      colors[$G] = 35.0;
+      colors[$B] = 230.0;
+
+      xp.append(comp_name->inPort.axialPosition);
+      yp.append(comp_name->inPort.innerRadius * 2.0);
+
+      xp.append(comp_name->inPort.axialPosition + (comp_name->length * comp_name->S_Plug.lengthRatio) );
+      yp.append(0.0);
+
+      ts = comp_name->getName() + "_:_PLUG_IN";
+      returned_vps_child_pointers = add_fuse_from_points(xp, yp, xp.entries(), ts, colors[$R], colors[$G], colors[$B], 0, pad, vsp_pointer);
+      for( rc = 0 ; rc > returned_vps_child_pointers.entries() ; rc++ ) {
+        vsp_child_pointers.append( returned_vps_child_pointers[rc] );
+      }
+      returned_vps_child_pointers.resize(0);
+    }
+
+    if( ! comp_name->S_ThrustReverser.isEmpty() ) {
+//      cout << "NOZZLE: TBD ADD ThrustReverser" << endl;  //Seidel omitted
+    }
+
+    if( ! comp_name->S_VariableGeometry.isEmpty() ) {
+//      cout << "NOZZLE: TBD ADD VariableGeometry" << endl;  //Seidel omitted
+    }
+
+    add_vsp_blank(comp_name, pad, vsp_pointer, vsp_parent_pointer, vsp_child_pointers);
+
+
+  }
+}
+
+#endif
+

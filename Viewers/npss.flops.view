@@ -1,0 +1,26 @@
+// <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+//             FLOPS Format DataViewer Specification
+// <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
+
+OutFileStream FLOPsheetStream { filename = "Output/CF34.deck.out"; } 
+
+DataViewer CaseRowViewer FLOPsheet { 
+  
+  variableList = { "Ambient.MN:?.?? = MN", "Ambient.alt:??????.? = Alt", 
+                   "PC:??? = PC", "PERF.myFg:??????.? = Thrust", 
+                   "Inlet.Fram:??????.? = Ram", 
+                   "PERF.myWfuelHr:??????.? = Fuel", 
+                   "PERF.myTSFC:?.????? = TSFC", 
+                   "Burner.Emissions.EINOx:???.???? = NOX", 
+                   "PERF.Nozzle_Atot:?????.?? = Exit A" } 
+  
+  
+  showMarks = FALSE; 
+  showHeaders = FALSE; 
+  pageWidth = 104; 
+  pageHeight = 500; 
+  
+  outStreamHandle = "FLOPsheetStream"; 
+
+} 

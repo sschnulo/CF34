@@ -1,0 +1,1505 @@
+#ifndef _WATE_vsp_COMMON_TB__INT
+#define _WATE_vsp_COMMON_TB__INT
+
+//#include<WATE_vsp_COMMON_UTIL.int>  //Seidel: already #included within the WATE.mdl (top level assembly), so not needed here
+
+/////////////////////////////////////////////////////////////////////////////////
+
+class WATE_vsp_common_TB extends UserTextBlock {
+  string comp_name = "";
+  kvp_map kvp;
+
+  /////////////////////////////////////////////////////////////////////////////////
+
+   void update() {
+       filledBlock = { }; 
+   }
+
+  /////////////////////////////////////////////////////////////////////////////////
+
+  string to_XML(string var, string val) {
+    string s = "";
+    string uvar = var;
+    int index = -1;
+    uvar = uvar.trim(" ");
+    while( ( index = uvar.index(" ") ) >= 0 ) { uvar[index] = "_"; } // SPACES BETWEEN WORDS
+    s = "<" + uvar + ">" + val + "</" + uvar + ">";
+    return(s);
+  }
+
+  /////////////////////////////////////////////////////////////////////////////////
+
+  string to_XML_with_lead_and_tail(string var, string val, string lead, string tail) {
+    string s = "";
+    string uvar = var;
+    int index = -1;
+    uvar = uvar.trim(" ");
+    while( ( index = uvar.index(" ") ) >= 0 ) { uvar[index] = "_"; } // SPACES BETWEEN WORDS
+    s = lead + "<" + uvar + ">" + val + "</" + uvar + "> " + tail;
+    return(s);
+  }
+
+  /////////////////////////////////////////////////////////////////////////////////
+
+  string to_XML_with_pad(string var, string val, int npad) {
+    string s = "";
+    string uvar = var;
+    int index = -1;
+    uvar = uvar.trim(" ");
+    while( ( index = uvar.index(" ") ) >= 0 ) { uvar[index] = "_"; } // SPACES BETWEEN WORDS
+    s = rep_string(npad) + "<" + uvar + ">" + val + "</" + uvar + ">";
+    return(s);
+  }
+
+
+  /////////////////////////////////////////////////////////////////////////////////
+
+  string rep_string( int n ) {
+    int i;
+    string s = "";
+    for( i = 0 ; i < n ; i++ ) {
+      s = s + " ";
+    }
+    return(s);
+  }
+
+  /////////////////////////////////////////////////////////////////////////////////
+  
+  void clear_params() {
+    kvp.clear();
+  }
+
+  /////////////////////////////////////////////////////////////////////////////////
+  // INITIALIZE WITH DEFAULT VALUES... SEE VSP "BLANK" OBJECT XML FILE
+
+  void init_common_XML_general_parms(int pad) {
+    clear_params();
+    set_XML_general_parm("Name", comp_name->getName(), pad); // **********
+    set_XML_general_parm("Id_Number", toStr(randomInt(1,9999999999)), pad); // **********
+    set_XML_general_parm("Id_String", comp_name->getPathName(), pad); // **********
+    set_XML_general_parm("ColorR", toStr(randomInt(1,255)), pad);
+    set_XML_general_parm("ColorG", toStr(randomInt(1,255)), pad);
+    set_XML_general_parm("ColorB", toStr(randomInt(1,255)), pad);
+    set_XML_general_parm("Symmetry", "0", pad); // **********
+    set_XML_general_parm("RelXFormFlag", "0", pad);
+    set_XML_general_parm("MaterialID", "0", pad);
+    set_XML_general_parm("OutputFlag", "1", pad);
+    set_XML_general_parm("OutputNameID", "0", pad);
+    set_XML_general_parm("DisplayChildrenFlag", "1", pad);
+    set_XML_general_parm("NumPnts", "21", pad); // **********
+    set_XML_general_parm("NumXsecs", "11", pad); // **********
+    set_XML_general_parm("MassPrior", "0", pad);
+    set_XML_general_parm("ShellFlag", "0", pad);
+    set_XML_general_parm("Tran_X", "0.000000", pad);
+    set_XML_general_parm("Tran_Y", "0.000000", pad);
+    set_XML_general_parm("Tran_Z", "0.000000", pad);
+    set_XML_general_parm("TranRel_X", "0.000000", pad);
+    set_XML_general_parm("TranRel_Y", "0.000000", pad);
+    set_XML_general_parm("TranRel_Z", "0.000000", pad);
+    set_XML_general_parm("Rot_X", "0.000000", pad);
+    set_XML_general_parm("Rot_Y", "0.000000", pad);
+    set_XML_general_parm("Rot_Z", "0.000000", pad);
+    set_XML_general_parm("RotRel_X", "0.000000", pad);
+    set_XML_general_parm("RotRel_Y", "0.000000", pad);
+    set_XML_general_parm("RotRel_Z", "0.000000", pad);
+    set_XML_general_parm("Origin", "0.000000", pad);
+    set_XML_general_parm("Density", "1.000000", pad);
+    set_XML_general_parm("ShellMassArea", "1.000000", pad);
+    set_XML_general_parm("RefFlag", "0", pad);
+    set_XML_general_parm("RefArea", "100.000000", pad);
+    set_XML_general_parm("RefSpan", "10.000000", pad);
+    set_XML_general_parm("RefCbar", "1.000000", pad);
+    set_XML_general_parm("AutoRefAreaFlag", "1", pad);
+    set_XML_general_parm("AutoRefSpanFlag", "1", pad);
+    set_XML_general_parm("AutoRefCbarFlag", "1", pad);
+    set_XML_general_parm("AeroCenter_X", "0.000000", pad);
+    set_XML_general_parm("AeroCenter_Y", "0.000000", pad);
+    set_XML_general_parm("AeroCenter_Z", "0.000000", pad);
+    set_XML_general_parm("AutoAeroCenterFlag", "1", pad);
+    set_XML_general_parm("PosAttachFlag", "3", pad);
+    set_XML_general_parm("U_Attach", "0.000000", pad);
+    set_XML_general_parm("V_Attach", "0.000000", pad);
+    set_XML_general_parm("PtrID", "1234567890", pad); // **********
+    set_XML_general_parm("Parent_PtrID", "0", pad);
+  }
+
+  /////////////////////////////////////////////////////////////////////////////////
+ 
+  void set_XML_general_parm(string tag, string val, int pad) {
+    kvp.set(tag, to_XML_with_pad(tag, val, pad) );
+  }
+
+  /////////////////////////////////////////////////////////////////////////////////
+
+  void copy_XML_general_parms_to_filledBlock() {
+    //string tag;
+    string val;
+    int i;
+    for( i = 0 ; i < kvp.length() ; i++ ) {
+      //tag = kvp[i][$KVP_KEY];
+      val = kvp.kvp[i][$KVP_VAL];
+      filledBlock.append(val);
+    }
+  }
+
+  /////////////////////////////////////////////////////////////////////////////////
+
+  real calc_chord_at_span( real sample_height, real root_chord, real blade_height, real blade_taper_ratio) {
+    real chord = 0.0;
+    real tip_chord;
+    real del_chord;
+    
+    tip_chord = root_chord * blade_taper_ratio;
+    
+    del_chord = tip_chord - root_chord;
+    
+    chord = root_chord + ( del_chord / blade_height ) * sample_height;
+    
+    // Or more concisely but more ugly...
+    // chord = root_chord * ( 1.0 + ( blade_taper_ratio - 1.0 ) / blade_height * sample_height );
+    
+    return(chord);
+  }
+
+  /////////////////////////////////////////////////////////////////////////////////
+
+  int[] add_frame_from_socket(string socket_name, int pad, int parent_vsp_pointer) {
+    int returned_vsp_child_pointers[] = {};
+
+//    cout << "TOP:: add_frame_from_socket " << comp_name << "->" << socket_name << endl;  //Seidel omitted
+//    cout << "INTERFACES :: " << comp_name->socket_name->listInterfaces() << endl;  //Seidel omitted
+    
+    if( comp_name->socket_name->isEmpty() ) {
+      return(returned_vsp_child_pointers);
+    }
+
+    // THIS IS A LITTLE PROBLEMATIC WHEN HANDLING A USER DEFINED CLASS...
+
+    // WATEframeIntermediate, 
+    // WATEframeSingleBearing,
+    // WATEframeSingleBearingNoHPX,
+    // WATEframeSmallEngine 
+    // WATEframeTurbineExit
+    //    DO NOT HAVE BLADES DEFINED - THEY ARE DERIVED FROM "WATEframeBase"
+    if( ( comp_name->socket_name->child.hasInterface("WATEframeIntermediate") ) 
+        || ( comp_name->socket_name->child.hasInterface("ZWATEframeIntermediate") ) 
+        || ( comp_name->socket_name->child.hasInterface("WATEframeSingleBearing") ) 
+        || ( comp_name->socket_name->child.hasInterface("WATEframeSingleBearingNoHPX") ) 
+        || ( comp_name->socket_name->child.hasInterface("WATEframeSmallEngine") ) 
+        || ( comp_name->socket_name->child.hasInterface("WATEframeTurbineExit") ) ) {
+      //cout << " SKIPPING FRAME DRAWING" << endl;
+      return(returned_vsp_child_pointers);
+    }
+    
+     //string sif[] = comp_name->socket_name->listInterfaces()
+     //// ONLY CUSTOM FRAMES HAVE BLADES DEFINED ???
+     //string frame_name_root = "WATEframeCustom";
+     //if( ! ( comp_name->socket_name->child.hasInterface("WATEframeCustom") ) ) {
+     //     return;
+     //   }
+
+    //string fs = comp_name->socket_name->GetPathName();
+    //cout << "FRAME PATH: " << fs << endl;
+
+    int rc;
+
+    string tag;
+    real xloc;
+    real foil_length;
+    real foil_height;
+    real foil_hub_radius;
+    real foil_tip_radius;
+    //real H2T_ratio;
+    //real ny;
+    //real n_height;
+    //real tchord;
+    //real twist;
+    //real root_chord;
+    real taper_ratio = 1.0;
+    real colors[3];
+    real twists[3];
+    int number_of_blades;
+
+    twists[$ROOT] = 90.0;
+    twists[$MEAN] = 90.0;
+    twists[$TIP] = 90.0;
+
+    colors[$R] = 255.0;
+    colors[$G] = 155.0;
+    colors[$B] = 100.0;
+
+    tag = comp_name->getName() + "_FRAME:";
+    if( comp_name->socket_name->isFrontFrame ) {
+      tag = tag + "FRONT";
+    } else {
+      tag = tag + "BACK";
+    }
+
+
+    foil_length = comp_name->socket_name->length;
+    foil_height = comp_name->socket_name->height;
+    foil_hub_radius =  comp_name->socket_name->hubRadius;
+    foil_tip_radius = comp_name->socket_name->tipRadius;
+
+    //H2T_ratio = foil_hub_radius / foil_tip_radius;
+    //n_height = 1.0 - H2T_ratio; // NORMALIZED HEIGHT OF BLADE 
+
+    xloc = comp_name->socket_name->frontAxialPosition + foil_length / 2.0;
+
+    number_of_blades = comp_name->socket_name->numBlades;
+
+    
+    int flip_camber[] = { 0, 0, 0 };
+    real cambers[] = { 0.0, 0.0, 0.0 };
+    real camber_locs[] = { 0.5, 0.5, 0.5 };
+    real camber_thicks[] = { 0.09, 0.09, 0.09 };
+
+    returned_vsp_child_pointers = add_blade(tag, pad, number_of_blades, xloc,
+                                            foil_length, foil_height, foil_hub_radius, foil_tip_radius,
+                                            taper_ratio, colors, twists, flip_camber, 
+                                            cambers, camber_locs, camber_thicks, 
+                                            parent_vsp_pointer);
+
+
+    if( ! comp_name->socket_name->S_TowerShaft.isEmpty() ) {
+      // TBD ADD TOWERSHAFT
+    }
+   
+    return(returned_vsp_child_pointers);
+  }
+
+  /////////////////////////////////////////////////////////////////////////////////
+
+  int[] add_blade(
+                 string tag,
+                 int pad,
+                 int number_of_blades,
+                 real xloc,
+                 real foil_length,
+                 real foil_height,
+                 real foil_hub_radius,
+                 real foil_tip_radius,
+                 real taper_ratio,
+                 real colors[],
+                 real twist[],
+                 int flip_camber[],
+                 real camber[],
+                 real camber_loc[],
+                 real camber_thick[],
+                 int parent_vsp_pointer) {
+
+//Seidel omitted
+/*
+    cout << "ORIG HUB RADIUS = " << foil_hub_radius << endl;
+    cout << "ORIG TIP RADIUS = " << foil_tip_radius << endl;
+    cout << "ORIG HEIGHT = " << foil_height << endl;
+*/
+    
+    real percent_grow = 0.0;
+    // LETS GROW THE BLADE A LITTLE BECAUSE OF TRIMMING
+    foil_hub_radius = foil_hub_radius * (1.0 - percent_grow); 
+    foil_tip_radius = foil_tip_radius * (1.0 + percent_grow);
+    foil_height = foil_tip_radius - foil_hub_radius;
+
+//Seidel omitted
+/*
+    cout << "GROWN HUB RADIUS = " << foil_hub_radius << endl;
+    cout << "GROWN TIP RADIUS = " << foil_tip_radius << endl;
+    cout << "GROWN HEIGHT = " << foil_height << endl;
+*/
+
+    int returned_vsp_child_pointers[] = {};
+
+    real H2T_ratio = foil_hub_radius / foil_tip_radius;
+    real n_height = 1.0 - H2T_ratio; // NORMALIZED HEIGHT OF BLADE
+    real val;
+
+    real root_chord;
+    real ny;
+    real lo;
+    real hi;
+    real dy;
+    real tchord;
+    int nspacers = 3;
+    int i;
+
+
+
+
+//     real cambers[] = { 0.02, 0.02, 0.02 };
+//     real camber_loc[] = { 0.5, 0.5, 0.5 };
+//     real camber_thick[] = { 0.0858, 0.0858, 0.0858 };
+//     if( exists(comp_name->"tcamber") ) {
+//       cout << "TCAMBER TABLE EXISTS" << endl;
+//       cout << comp_name->getName() << endl;
+//     } else {
+//       cout << "TCAMBER TABLE DOES NOT EXIST" << endl;
+//       cout << comp_name->getName() << endl;
+//     }
+//     cout << exists(comp_name->"MNin") << endl; // ????
+
+
+    int vsp_pointer = randomInt(1,9999999999);
+    returned_vsp_child_pointers.append(vsp_pointer);
+
+//    cout << "TOP ADD BLADE" << endl;
+
+    filledBlock.append( rep_string(pad) + "<Component>");
+    pad += 2;
+    filledBlock.append( to_XML_with_pad("Type", "Prop", pad) );
+    
+    filledBlock.append( rep_string(pad) + "<General_Parms>" );
+    pad += 2;
+
+    init_common_XML_general_parms(pad);
+    
+    // NOW CHANGE/UPDATE ANY "General_Parms" SPECIFIC TO THIS COMPONENT TYPE
+
+    set_XML_general_parm("Name", tag, pad);
+
+    // For vsp the xlocation is the center of the root profile - not the leading edge.
+    //xloc = comp_name->inPort.axialPosition + total_length + foil_length / 2.0;
+
+    set_XML_general_parm("Tran_X", toStr(xloc), pad);
+
+    set_XML_general_parm("ColorR", toStr(colors[$R]), pad);
+    set_XML_general_parm("ColorG", toStr(colors[$G]), pad);
+    set_XML_general_parm("ColorB", toStr(colors[$B]), pad);
+    set_XML_general_parm("PtrID", toStr(vsp_pointer), pad);
+    set_XML_general_parm("Parent_PtrID", toStr(parent_vsp_pointer), pad);
+
+    copy_XML_general_parms_to_filledBlock();
+    clear_params();
+
+    pad -= 2;
+    filledBlock.append( rep_string(pad) + "</General_Parms>");
+    filledBlock.append( rep_string(pad) + "<Prop_Parms>");
+    pad += 2;
+
+    filledBlock.append( to_XML_with_pad("NumBlades", toStr(2), pad) ); //Seidel: toStr(number_of_blades) set = 2 to avert VSP overload
+    filledBlock.append( rep_string(pad) + "Seidel: actual NumBlades = " + toStr(number_of_blades));  //Seidel: actual NumBlades smuggled into VSP for reference
+	
+    filledBlock.append( to_XML_with_pad("SmoothFlag", "1", pad) );
+    filledBlock.append( to_XML_with_pad("NumU", "10", pad) );
+    filledBlock.append( to_XML_with_pad("NumW", "4", pad) );
+    filledBlock.append( to_XML_with_pad("Diameter", toStr( foil_tip_radius * 2.0), pad) );
+    filledBlock.append( to_XML_with_pad("ConeAngle", "0.000000", pad) );
+    filledBlock.append( to_XML_with_pad("Pitch", "0.000000", pad) );
+    
+    //    ___  ____  ____  ______
+    //   / _ \/ __ \/ __ \/_  __/
+    //  / , _/ /_/ / /_/ / / /
+    // /_/|_|\____/\____/ /_/
+
+    //Root Blade
+    filledBlock.append( rep_string(pad) + "<Sect_Parms>");
+    pad+=2;
+
+    
+    root_chord = foil_length / sin(twist[$ROOT]*(PI/180.0));
+
+    // For vsp the xlocation is the center of the root profile - not the leading edge.
+    // LE;
+    //pair[0] = comp_name->inPort.axialPosition + total_length;
+    //pair[1] = foil_hub_radius * 2.0;
+    //root.append(pair);
+    //sroot_x.append(pair[0]);
+
+    // TE;
+    //pair[0] = comp_name->inPort.axialPosition + total_length + foil_length;
+    //pair[1] = foil_hub_radius * 2.0;
+    //root.append(pair);
+    //sroot_x.append(comp_name->inPort.axialPosition + total_length + foil_length);
+
+    // x/R
+    filledBlock.append( to_XML_with_pad( "X_Off", toStr( H2T_ratio ), pad ) );
+    // y/R
+    filledBlock.append( to_XML_with_pad( "Y_Off", "0.000000", pad) );
+
+    // c/R
+    filledBlock.append( to_XML_with_pad( "Chord", toStr( root_chord / foil_tip_radius ), pad ) );
+    // Here is where the twist variable is, 90 degrees = in line with the flow, 0 degrees = perpendicular to the flow
+    filledBlock.append( to_XML_with_pad("Twist", toStr(twist[$ROOT]), pad) );
+    
+    filledBlock.append( rep_string(pad) + "<Airfoil>");
+    pad+=2;
+    filledBlock.append( to_XML_with_pad("Type", "1", pad) );
+    filledBlock.append( to_XML_with_pad("Inverted_Flag", toStr(flip_camber[$ROOT]), pad) );
+    filledBlock.append( to_XML_with_pad("Camber", toStr(camber[$ROOT]), pad) );
+    //filledBlock.append( to_XML_with_pad("Camber", "0.020000", pad) );
+    filledBlock.append( to_XML_with_pad("Camber_Loc", toStr(camber_loc[$ROOT]), pad) );
+    //filledBlock.append( to_XML_with_pad("Camber_Loc", "0.500000", pad) );
+    filledBlock.append( to_XML_with_pad("Thickness", toStr(camber_thick[$ROOT]), pad) );
+    //filledBlock.append( to_XML_with_pad("Thickness", "0.085833", pad) );
+    filledBlock.append( to_XML_with_pad("Thickness_Loc", "0.300000", pad) );
+    filledBlock.append( to_XML_with_pad("Radius_Le", "0.008118", pad) );
+    filledBlock.append( to_XML_with_pad("Radius_Te", "0.000000", pad) );
+    filledBlock.append( to_XML_with_pad("Six_Series", "63", pad) );
+    filledBlock.append( to_XML_with_pad("Ideal_Cl", "0.000000", pad) );
+    filledBlock.append( to_XML_with_pad("A", "0.000000", pad) );
+    pad-=2;
+    filledBlock.append( rep_string(pad) + "</Airfoil>");
+    pad-=2;
+    filledBlock.append( rep_string(pad) + "</Sect_Parms>");
+		
+
+    // SPACERS
+    for( i = 1 ; i <= nspacers ; i++) {
+     
+      filledBlock.append( rep_string(pad) + "<Sect_Parms>");
+      pad+=2;
+
+      lo = H2T_ratio;
+      hi = ( 1.0 + H2T_ratio ) / 2.0; // NORMALIZED SECTION LOCATION
+      dy = (hi - lo) / ( toReal(nspacers) + 1.0 );
+      ny = lo + toReal(i) * dy; 
+      filledBlock.append( to_XML_with_pad("X_Off", toStr( ny ), pad ) );
+      filledBlock.append( to_XML_with_pad("Y_Off", "0.000000", pad) );
+
+      lo = 0.0;
+      hi = foil_height/2.0;
+      dy = (hi - lo) / ( toReal(nspacers) + 1.0 );
+      tchord = calc_chord_at_span( lo + toReal(i) * dy, root_chord, foil_height, taper_ratio);
+      // c/R
+      filledBlock.append( to_XML_with_pad("Chord", toStr( tchord / foil_tip_radius ), pad ) );
+
+
+      lo = twist[$ROOT];
+      hi = twist[$MEAN];
+      dy = (hi - lo) / ( toReal(nspacers) + 1.0 );
+      filledBlock.append( to_XML_with_pad("Twist", toStr(lo + toReal(i) * dy), pad) );
+
+      filledBlock.append( rep_string(pad) + "<Airfoil>");
+      pad+=2;
+      filledBlock.append( to_XML_with_pad("Type", "1", pad) );
+
+      // NOT SURE HOW TO WORK AROUND THIS
+      filledBlock.append( to_XML_with_pad("Inverted_Flag", toStr(flip_camber[$ROOT]), pad) );
+
+      lo = camber[$ROOT];
+      hi = camber[$MEAN];
+      dy = (hi - lo) / ( toReal(nspacers) + 1.0 );
+      filledBlock.append( to_XML_with_pad("Camber", toStr(lo + toReal(i) * dy), pad) );
+
+      lo = camber_loc[$ROOT];
+      hi = camber_loc[$MEAN];
+      dy = (hi - lo) / ( toReal(nspacers) + 1.0 );
+      filledBlock.append( to_XML_with_pad("Camber_Loc", toStr(lo + toReal(i) * dy), pad) );
+    
+      lo = camber_thick[$ROOT];
+      hi = camber_thick[$MEAN];
+      dy = (hi - lo) / ( toReal(nspacers) + 1.0 );
+      filledBlock.append( to_XML_with_pad("Thickness", toStr(lo + toReal(i) * dy), pad) );
+    
+      filledBlock.append( to_XML_with_pad("Thickness_Loc", "0.300000", pad) );
+      filledBlock.append( to_XML_with_pad("Radius_Le", "0.008118", pad) );
+      filledBlock.append( to_XML_with_pad("Radius_Te", "0.000000", pad) );
+      filledBlock.append( to_XML_with_pad("Six_Series", "63", pad) );
+      filledBlock.append( to_XML_with_pad("Ideal_Cl", "0.000000", pad) );
+      filledBlock.append( to_XML_with_pad("A", "0.000000", pad) );
+      pad-=2;
+      filledBlock.append( rep_string(pad) + "</Airfoil>");
+      pad-=2;
+      filledBlock.append( rep_string(pad) + "</Sect_Parms>");
+
+    }
+
+
+    //    __  __________   _  __
+    //   /  |/  / __/ _ | / |/ /
+    //  / /|_/ / _// __ |/    /
+    // /_/  /_/___/_/ |_/_/|_/
+
+    //Mean Blade
+
+
+    filledBlock.append( rep_string(pad) + "<Sect_Parms>");
+    pad+=2;
+    ny = ( 1.0 + H2T_ratio ) / 2.0; // NORMALIZED SECTION LOCATION
+
+    filledBlock.append( to_XML_with_pad("X_Off", toStr( ny ), pad ) );
+    filledBlock.append( to_XML_with_pad("Y_Off", "0.000000", pad) );
+
+    tchord = calc_chord_at_span( foil_height/2.0, root_chord, foil_height, taper_ratio);
+
+
+    //filledBlock.append( to_XML_with_pad("DT_tchord", toStr( tchord ), pad ) );
+    //filledBlock.append( to_XML_with_pad("DT_foil_height", toStr( foil_height ), pad ) );
+    //filledBlock.append( to_XML_with_pad("DT_root_chord", toStr( root_chord ), pad ) );
+    //filledBlock.append( to_XML_with_pad("DT_taper_ratio", toStr( taper_ratio ), pad ) );
+
+
+    // c/R
+    filledBlock.append( to_XML_with_pad("Chord", toStr( tchord / foil_tip_radius ), pad ) );
+    filledBlock.append( to_XML_with_pad("Twist", toStr(twist[$MEAN]), pad) );
+
+    filledBlock.append( rep_string(pad) + "<Airfoil>");
+    pad+=2;
+    filledBlock.append( to_XML_with_pad("Type", "1", pad) );
+    filledBlock.append( to_XML_with_pad("Inverted_Flag", toStr(flip_camber[$MEAN]), pad) );
+    filledBlock.append( to_XML_with_pad("Camber", toStr(camber[$MEAN]), pad) );
+    //filledBlock.append( to_XML_with_pad("Camber", "0.020000", pad) );
+    filledBlock.append( to_XML_with_pad("Camber_Loc", toStr(camber_loc[$MEAN]), pad) );
+    //filledBlock.append( to_XML_with_pad("Camber_Loc", "0.500000", pad) );
+    filledBlock.append( to_XML_with_pad("Thickness", toStr(camber_thick[$MEAN]), pad) );
+    //filledBlock.append( to_XML_with_pad("Thickness", "0.085833", pad) );
+    filledBlock.append( to_XML_with_pad("Thickness_Loc", "0.300000", pad) );
+    filledBlock.append( to_XML_with_pad("Radius_Le", "0.008118", pad) );
+    filledBlock.append( to_XML_with_pad("Radius_Te", "0.000000", pad) );
+    filledBlock.append( to_XML_with_pad("Six_Series", "63", pad) );
+    filledBlock.append( to_XML_with_pad("Ideal_Cl", "0.000000", pad) );
+    filledBlock.append( to_XML_with_pad("A", "0.000000", pad) );
+    pad-=2;
+    filledBlock.append( rep_string(pad) + "</Airfoil>");
+    pad-=2;
+    filledBlock.append( rep_string(pad) + "</Sect_Parms>");
+
+
+
+
+    // SPACERS
+    for( i = 1 ; i <= nspacers ; i++) {
+     
+      filledBlock.append( rep_string(pad) + "<Sect_Parms>");
+      pad+=2;
+
+      lo = ( 1.0 + H2T_ratio ) / 2.0;
+      hi = 1.0;
+      dy = (hi - lo) / ( toReal(nspacers) + 1.0 );
+      ny = lo + toReal(i) * dy; 
+      filledBlock.append( to_XML_with_pad("X_Off", toStr( ny ), pad ) );
+      filledBlock.append( to_XML_with_pad("Y_Off", "0.000000", pad) );
+
+      lo = foil_height/2.0;
+      hi = foil_height;
+      dy = (hi - lo) / ( toReal(nspacers) + 1.0 );
+      tchord = calc_chord_at_span( lo + toReal(i) * dy, root_chord, foil_height, taper_ratio);
+      // c/R
+      filledBlock.append( to_XML_with_pad("Chord", toStr( tchord / foil_tip_radius ), pad ) );
+
+
+      lo = twist[$MEAN];
+      hi = twist[$TIP];
+      dy = (hi - lo) / ( toReal(nspacers) + 1.0 );
+      filledBlock.append( to_XML_with_pad("Twist", toStr(lo + toReal(i) * dy), pad) );
+
+      filledBlock.append( rep_string(pad) + "<Airfoil>");
+      pad+=2;
+      filledBlock.append( to_XML_with_pad("Type", "1", pad) );
+
+      // NOT SURE HOW TO WORK AROUND THIS
+      filledBlock.append( to_XML_with_pad("Inverted_Flag", toStr(flip_camber[$TIP]), pad) );
+
+      lo = camber[$MEAN];
+      hi = camber[$TIP];
+      dy = (hi - lo) / ( toReal(nspacers) + 1.0 );
+      filledBlock.append( to_XML_with_pad("Camber", toStr(lo + toReal(i) * dy), pad) );
+
+      lo = camber_loc[$MEAN];
+      hi = camber_loc[$TIP];
+      dy = (hi - lo) / ( toReal(nspacers) + 1.0 );
+      filledBlock.append( to_XML_with_pad("Camber_Loc", toStr(lo + toReal(i) * dy), pad) );
+    
+      lo = camber_thick[$MEAN];
+      hi = camber_thick[$TIP];
+      dy = (hi - lo) / ( toReal(nspacers) + 1.0 );
+      filledBlock.append( to_XML_with_pad("Thickness", toStr(lo + toReal(i) * dy), pad) );
+    
+      filledBlock.append( to_XML_with_pad("Thickness_Loc", "0.300000", pad) );
+      filledBlock.append( to_XML_with_pad("Radius_Le", "0.008118", pad) );
+      filledBlock.append( to_XML_with_pad("Radius_Te", "0.000000", pad) );
+      filledBlock.append( to_XML_with_pad("Six_Series", "63", pad) );
+      filledBlock.append( to_XML_with_pad("Ideal_Cl", "0.000000", pad) );
+      filledBlock.append( to_XML_with_pad("A", "0.000000", pad) );
+      pad-=2;
+      filledBlock.append( rep_string(pad) + "</Airfoil>");
+      pad-=2;
+      filledBlock.append( rep_string(pad) + "</Sect_Parms>");
+
+    }
+
+
+    //  _____________
+    // /_  __/  _/ _ \
+    //  / / _/ // ___/
+    // /_/ /___/_/
+
+    //Tip Blade
+    
+
+    // For vsp the xlocation is the center of the root profile - not the leading edge.
+    //LE
+    //pair[0] = comp_name->inPort.axialPosition + total_length;
+    //pair[1] = foil_tip_radius * 2.0;
+    //tip.append(pair);
+    //stip_x.append(pair[0]);
+
+    // TE
+    //pair[0] = comp_name->inPort.axialPosition + total_length + foil_length;
+    //pair[1] = foil_tip_radius * 2.0;
+    //tip.append(pair);
+    //stip_x.append(comp_name->inPort.axialPosition + total_length + foil_length);
+
+
+    filledBlock.append( rep_string(pad) + "<Sect_Parms>");
+    pad+=2;
+    filledBlock.append( to_XML_with_pad("X_Off", "1.000000", pad) );
+    filledBlock.append( to_XML_with_pad("Y_Off", "0.000000", pad) );
+
+    // c/R
+    filledBlock.append( to_XML_with_pad("Chord", toStr( ( root_chord * taper_ratio ) / foil_tip_radius ), pad ) );
+    filledBlock.append( to_XML_with_pad("Twist", toStr(twist[$TIP]), pad) );
+
+    
+    filledBlock.append( rep_string(pad) + "<Airfoil>");
+    pad+=2;
+    filledBlock.append( to_XML_with_pad("Type", "1", pad) );
+    filledBlock.append( to_XML_with_pad("Inverted_Flag", toStr(flip_camber[$TIP]), pad) );
+    filledBlock.append( to_XML_with_pad("Camber", toStr(camber[$TIP]), pad) );
+    //filledBlock.append( to_XML_with_pad("Camber", "0.020000", pad) );
+    filledBlock.append( to_XML_with_pad("Camber_Loc", toStr(camber_loc[$TIP]), pad) );
+    //filledBlock.append( to_XML_with_pad("Camber_Loc", "0.500000", pad) );
+    filledBlock.append( to_XML_with_pad("Thickness", toStr(camber_thick[$TIP]), pad) );
+    //filledBlock.append( to_XML_with_pad("Thickness", "0.085833", pad) );
+    filledBlock.append( to_XML_with_pad("Thickness_Loc", "0.300000", pad) );
+    filledBlock.append( to_XML_with_pad("Radius_Le", "0.008118", pad) );
+    filledBlock.append( to_XML_with_pad("Radius_Te", "0.000000", pad) );
+    filledBlock.append( to_XML_with_pad("Six_Series", "63", pad) );
+    filledBlock.append( to_XML_with_pad("Ideal_Cl", "0.000000", pad) );
+    filledBlock.append( to_XML_with_pad("A", "0.000000", pad) );
+    pad-=2;
+    filledBlock.append( rep_string(pad) + "</Airfoil>");
+    pad-=2;
+    filledBlock.append( rep_string(pad) + "</Sect_Parms>");
+    
+    // Finish the Component
+    pad-=2;
+    filledBlock.append( rep_string(pad) + "</Prop_Parms>");
+    pad-=2;
+    filledBlock.append( rep_string(pad) + "</Component>");
+
+    return(returned_vsp_child_pointers);
+  }
+
+
+  /////////////////////////////////////////////////////////////////////////////////
+
+  int[] add_fuse_from_points( real xp[], real yp[], int npts, string name, 
+                            int red, int green, int blue, int nsections, int pad, int parent_vsp_pointer ) {
+
+    int returned_vsp_child_pointers[] = {};
+    real xloc;
+    int next_sections = nsections;
+    int prev_sections = nsections;
+    int i;
+    int ii;
+    real max_x = -1.0E+12;
+    real min_x = 1.0E+12;
+    string ts;
+
+    real max_index = -1;
+    real min_index = -1;
+
+    int vsp_pointer = randomInt(1,9999999999);
+    returned_vsp_child_pointers.append(vsp_pointer);
+
+//Seidel omitted
+/*
+    cout << "add_fuse_from_points name:" << name << endl;
+    cout << "xp.entries() = " << xp.entries() << endl;
+    cout << "yp.entries() = " << yp.entries() << endl;
+    cout << "npts = " << npts << endl;
+*/
+
+    // THIS IS KINDA-BRUTE FORCE AND SLOW
+    // CALLS EXTERNAL PYTHON SCRIPT TO FIT A POLYNOMIAL
+//     OutFileStream points_csv;
+//     InFileStream coef_csv;
+//     string filename = comp_name->getName() + name + "_points.csv";
+//     string coef_filename = comp_name->getName() + name + "_coef.csv";
+//     cout << filename << endl;
+
+//     points_csv.open(filename); 
+//     for( i = 0 ; i < npts ; i++ ) {
+//       points_csv << xp[i] << ", " << yp[i] << endl;
+//     }
+//     points_csv.close();
+
+//     string cmd;
+//     cmd = "python pft.py " + filename + " " + coef_filename + " 4";
+//     system(cmd);
+
+//     coef_csv.open(coef_filename);
+//     coef_csv >> ts;
+//     cout << ts << endl;
+//     coef_csv.close();
+
+//     string ns;
+    
+//     real coef[] = {};
+    
+//     Tokenizer tk;
+//     tk.sourceStr = ts;
+//     while( ( ns = tk.getToken(",")) != "" ) {
+//       coef.append(toReal(ns));
+//     }
+
+//     cout << coef << endl;
+    
+    if( npts <= 0 )  {
+      npts = min(xp.entries(), yp.entries());
+    }
+
+    max_x = -1.0E+12;
+    min_x = 1.0E+12;
+    for( i = 0 ; i < npts ; i++ ) {
+      if( xp[i] < min_x ) {
+        min_x = xp[i];
+        min_index = i;
+      }
+      if( xp[i] > max_x ) {
+        max_x = xp[i];
+        max_index = i;
+      }
+    }
+    
+//Seidel omitted
+/*
+    cout << "max_x = " << max_x << endl;
+    cout << "max_index = " << max_index << endl;
+    cout << "min_x = " << min_x << endl;
+    cout << "min_index = " << min_index << endl;
+    for( i = 0 ; i < npts ; i++ ) {
+      cout << i << ") " << xp[i] << " " << yp[i] << endl;
+    }
+*/
+
+    filledBlock.append( rep_string(pad) + "<Component>");
+    pad += 2;
+    filledBlock.append( to_XML_with_pad("Type", "Fuselage", pad) );
+    filledBlock.append( rep_string(pad) + "<General_Parms>");
+    pad += 2;
+    
+    // INITIALIZE THE "General_Parms" TO DEFAULT VALUES
+    init_common_XML_general_parms(pad);
+    
+    // NOW CHANGE/UPDATE ANY "General_Parms" SPECIFIC TO THIS COMPONENT TYPE
+    ts = comp_name->getName() + "_" + name;
+    set_XML_general_parm("Name", ts, pad);
+    
+    xloc = min_x;
+    set_XML_general_parm("Tran_X", toStr(xloc), pad);
+
+
+    set_XML_general_parm("ColorR", toStr(red), pad);
+    set_XML_general_parm("ColorG", toStr(green), pad);
+    set_XML_general_parm("ColorB", toStr(blue), pad);
+    set_XML_general_parm("PtrID", toStr(vsp_pointer), pad);
+    set_XML_general_parm("Parent_PtrID", toStr(parent_vsp_pointer), pad);
+
+    // NO MORE CHANGES TO "General_Parms" SECTION - DUMP ALL THE VALUES TO THE "filledBlock" VARIABLE
+    copy_XML_general_parms_to_filledBlock();
+      
+    pad -= 2;
+    filledBlock.append( rep_string(pad) + "</General_Parms>");
+    
+    filledBlock.append( rep_string(pad) + "<Fuse_Parms>");
+    pad += 2;
+    
+//       filledBlock.append( to_XML_with_pad("DT_MAX_X", toStr(max_x), pad) );
+//       filledBlock.append( to_XML_with_pad("DT_MAX_X_INDEX", toStr(max_index), pad) );
+//       filledBlock.append( to_XML_with_pad("DT_MIN_X", toStr(min_x), pad) );
+//       filledBlock.append( to_XML_with_pad("DT_MIN_X_INDEX", toStr(min_index), pad) );
+      filledBlock.append( to_XML_with_pad("Fuse_Length", toStr(max_x - min_x), pad) );
+      filledBlock.append( to_XML_with_pad("Camber", "0.000000", pad) );
+      filledBlock.append( to_XML_with_pad("Camber_Location", "0.5", pad) );
+      filledBlock.append( to_XML_with_pad("Aft_Offset", "0.000000", pad) );
+      filledBlock.append( to_XML_with_pad("Nose_Angle", "0.000000", pad) );
+      filledBlock.append( to_XML_with_pad("Nose_Strength", "0.300000", pad) );
+      filledBlock.append( to_XML_with_pad("Nose_Rho", "0.5", pad) );
+      filledBlock.append( to_XML_with_pad("Aft_Rho", "0.5", pad) );
+      filledBlock.append( to_XML_with_pad("IML_Flag", "0", pad) );
+      filledBlock.append( to_XML_with_pad("Space_Type", "2", pad) );
+      filledBlock.append( to_XML_with_pad("Nose_Super_Flag", "0", pad) );
+      filledBlock.append( to_XML_with_pad("Aft_Super_Flag", "0", pad) );
+
+      pad -= 2;
+      filledBlock.append( rep_string(pad) + "</Fuse_Parms>");
+      
+      filledBlock.append( rep_string(pad) + "<Cross_Section_List>");
+      pad += 2;
+
+
+      for( ii = 0 ; ii < npts ; ++ii ) {
+        if( max_index > min_index ) { // acending x order
+          i = ii;
+        }
+        if( max_index < min_index ) { // decending x order
+          i = npts - 1 - ii;
+        }
+
+        filledBlock.append( rep_string(pad) + "<Cross_Section>");
+        pad+=2;
+        filledBlock.append( to_XML_with_pad("Num_Pnts", "21", pad) );
+
+        next_sections = nsections;
+        prev_sections = nsections;
+
+//Seidel omitted
+/*
+        cout << "ii=" << ii << endl;
+        cout << "i=" << i << endl;
+        cout << "MAXINDEX = " << max_index << endl;
+        cout << "MININDEX = " << min_index << endl;
+        if( i > (npts-1) ) {
+          cout << "i OUT OF BOUNDS: " << name << endl;
+        }
+*/
+        xloc = (xp[i] - min_x)/(max_x - min_x);
+        
+        if( i == 0 ) {
+          prev_sections = 0;
+        }
+
+        if( i == ( npts - 1 ) ) { 
+          next_sections = 0;
+        }
+
+        if( xloc < 0.0 ) { xloc = 0.0; }
+        if( xloc > 1.0 ) { xloc = 1.0; }
+
+//         filledBlock.append( to_XML_with_pad("DT_X", toStr(comp_name->xc[i]), pad) );
+
+        filledBlock.append( to_XML_with_pad("Spine_Location", toStr(xloc), pad ) );
+        filledBlock.append( to_XML_with_pad("Z_Offset", "0.000000", pad) );
+        filledBlock.append( to_XML_with_pad("Top_Thick", "0.500000", pad) );
+        filledBlock.append( to_XML_with_pad("Bot_Thick", "0.500000", pad) );
+        filledBlock.append( to_XML_with_pad("Side_Thick", "0.500000", pad) );
+        filledBlock.append( to_XML_with_pad("Act_Top_Thick", "0.500000", pad) );
+        filledBlock.append( to_XML_with_pad("Act_Bot_Thick", "0.500000", pad) );
+        filledBlock.append( to_XML_with_pad("Act_Side_Thick", "0.500000", pad) );
+        filledBlock.append( to_XML_with_pad("IML_X_Offset", "0.000000", pad) );
+        filledBlock.append( to_XML_with_pad("IML_Z_Offset", "0.000000", pad) );
+        filledBlock.append( to_XML_with_pad("ML_Type", "0", pad) );
+        filledBlock.append( to_XML_with_pad("IML_Flag", "0", pad) );
+        filledBlock.append( to_XML_with_pad("Profile_Tan_Str_1", "0.250000", pad) );
+        filledBlock.append( to_XML_with_pad("Profile_Tan_Str_2", "0.250000", pad) );
+        filledBlock.append( to_XML_with_pad("Profile_Tan_Ang", "0.000000", pad) );
+        filledBlock.append( to_XML_with_pad("Num_Sect_Interp_1", toStr(prev_sections), pad) );
+        filledBlock.append( to_XML_with_pad("Num_Sect_Interp_2", toStr(next_sections), pad) );
+        
+        filledBlock.append( rep_string(pad) + "<OML_Parms>");
+        pad+=2;
+
+        if( (abs(yp[i]) - 1.0e-6 ) < 0.0 ) {
+          filledBlock.append( to_XML_with_pad("Type", "0", pad) );
+        } else {
+          filledBlock.append( to_XML_with_pad("Type", "1", pad) );
+        }
+        filledBlock.append( to_XML_with_pad("Height", toStr(yp[i]), pad) );
+        filledBlock.append( to_XML_with_pad("Width", toStr(yp[i]), pad) );
+        filledBlock.append( to_XML_with_pad("Max_Width_Location", "0.000000", pad) );
+        filledBlock.append( to_XML_with_pad("Corner_Radius", "0.500000", pad) );
+        filledBlock.append( to_XML_with_pad("Top_Tan_Angle", "90.000000", pad) );
+        filledBlock.append( to_XML_with_pad("Bot_Tan_Angle", "90.000000", pad) );
+        filledBlock.append( to_XML_with_pad("Top_Tan_Strength", "0.830000", pad) );
+        filledBlock.append( to_XML_with_pad("Upper_Tan_Strength", "0.830000", pad) );
+        filledBlock.append( to_XML_with_pad("Lower_Tan_Strength", "0.830000", pad) );
+        filledBlock.append( to_XML_with_pad("Bottom_Tan_Strength", "0.830000", pad) );
+        
+        pad-=2;
+        filledBlock.append( rep_string(pad) + "</OML_Parms>");
+      
+        filledBlock.append( rep_string(pad) + "<IML_Parms>");
+        pad+=2;
+
+        filledBlock.append( to_XML_with_pad("Type", "1", pad) );
+        filledBlock.append( to_XML_with_pad("Height", toStr(yp[i] * 0.9), pad) ); // TBD THICKNESS
+        filledBlock.append( to_XML_with_pad("Width", toStr(yp[i] * 0.9), pad) );
+        filledBlock.append( to_XML_with_pad("Max_Width_Location", "0.000000", pad) );
+        filledBlock.append( to_XML_with_pad("Corner_Radius", "0.500000", pad) );
+        filledBlock.append( to_XML_with_pad("Top_Tan_Angle", "90.000000", pad) );
+        filledBlock.append( to_XML_with_pad("Bot_Tan_Angle", "90.000000", pad) );
+        filledBlock.append( to_XML_with_pad("Top_Tan_Strength", "0.830000", pad) );
+        filledBlock.append( to_XML_with_pad("Upper_Tan_Strength", "0.830000", pad) );
+        filledBlock.append( to_XML_with_pad("Lower_Tan_Strength", "0.830000", pad) );
+        filledBlock.append( to_XML_with_pad("Bottom_Tan_Strength", "0.830000", pad) );
+      
+        pad-=2;
+        filledBlock.append( rep_string(pad) + "</IML_Parms>");
+        
+        pad-=2;
+        filledBlock.append( rep_string(pad) + "</Cross_Section>");
+      
+      }
+    
+      pad-=2;
+      filledBlock.append( rep_string(pad) + "</Cross_Section_List>");
+      pad-=2;
+      filledBlock.append( rep_string(pad) + "</Component>");
+
+      clear_params();
+
+      return( returned_vsp_child_pointers );
+    }
+
+  /////////////////////////////////////////////////////////////////////////////////
+
+  int[] add_fuse2_from_points( real xp[], real yp[], real zp[], int sect_type[], int npts, string name, 
+                             int red, int green, int blue, int nsections, int pad, int parent_vsp_pointer ) {
+    int returned_vsp_child_pointers[] = {};
+
+//    cout << "*** TOP::add_fuse2_from_points" << endl;
+
+    real xloc;
+    int next_sections = nsections;
+    int prev_sections = nsections;
+    int i;
+    int ii;
+    real max_x = -1.0E+12;
+    real min_x = 1.0E+12;
+    string ts;
+
+    real max_index = -1;
+    real min_index = -1;
+
+    int vsp_pointer = randomInt(1,9999999999);
+    returned_vsp_child_pointers.append(vsp_pointer);
+
+    // sect_type: FROM VSP FUSE2
+    // 0 = point
+    // 1 = circle
+    // 2 = ellipse
+    // 3 = box
+    // 4 = round box
+    // 5 = general
+    // 6 = file ? TBD
+    // 7 = edit- circle 3 pt ? TBD
+
+
+    if( npts <= 0 )  {
+      npts = min(xp.entries(), yp.entries(), zp.entries());
+    }
+
+    max_x = -1.0E+12;
+    min_x = 1.0E+12;
+    for( i = 0 ; i < npts ; i++ ) {
+      if( xp[i] < min_x ) {
+        min_x = xp[i];
+        min_index = i;
+      }
+      if( xp[i] > max_x ) {
+        max_x = xp[i];
+        max_index = i;
+      }
+    }
+    
+    filledBlock.append( rep_string(pad) + "<Component>");
+    pad += 2;
+    filledBlock.append( to_XML_with_pad("Type", "Fuselage2", pad) );
+    filledBlock.append( rep_string(pad) + "<General_Parms>");
+    pad += 2;
+    
+    // INITIALIZE THE "General_Parms" TO DEFAULT VALUES
+    init_common_XML_general_parms(pad);
+    
+    // NOW CHANGE/UPDATE ANY "General_Parms" SPECIFIC TO THIS COMPONENT TYPE
+    ts = comp_name->getName() + "_" + name;
+    set_XML_general_parm("Name", ts, pad);
+    
+    xloc = min_x;
+    set_XML_general_parm("Tran_X", toStr(xloc), pad);
+
+
+    set_XML_general_parm("ColorR", toStr(red), pad);
+    set_XML_general_parm("ColorG", toStr(green), pad);
+    set_XML_general_parm("ColorB", toStr(blue), pad);
+    set_XML_general_parm("PtrID", toStr(vsp_pointer), pad);
+    set_XML_general_parm("Parent_PtrID", toStr(parent_vsp_pointer), pad);
+
+    // NO MORE CHANGES TO "General_Parms" SECTION - DUMP ALL THE VALUES TO THE "filledBlock" VARIABLE
+    copy_XML_general_parms_to_filledBlock();
+      
+    pad -= 2;
+    filledBlock.append( rep_string(pad) + "</General_Parms>");
+    
+    filledBlock.append( rep_string(pad) + "<Fuse_Parms>");
+    pad += 2;
+    
+      filledBlock.append( to_XML_with_pad("Fuse_Length", toStr(max_x - min_x), pad) );
+      filledBlock.append( to_XML_with_pad("Space_Type", "2", pad) );
+
+      pad -= 2;
+      filledBlock.append( rep_string(pad) + "</Fuse_Parms>");
+      
+      filledBlock.append( rep_string(pad) + "<Cross_Section_List>");
+      pad += 2;
+
+
+      for( ii = 0 ; ii < npts ; ++ii ) {
+        if( max_index > min_index ) { // acending x order
+          i = ii;
+        }
+        if( max_index < min_index ) { // decending x order
+          i = npts - 1 - ii;
+        }
+
+        filledBlock.append( rep_string(pad) + "<Cross_Section>");
+        pad+=2;
+        filledBlock.append( to_XML_with_pad("Num_Pnts", "21", pad) );
+
+        next_sections = nsections;
+        prev_sections = nsections;
+  
+        xloc = (xp[i] - min_x)/(max_x - min_x);
+        
+        if( i == 0 ) {
+          prev_sections = 0;
+        }
+
+        if( i == ( npts - 1 ) ) { 
+          next_sections = 0;
+        }
+
+        if( xloc < 0.0 ) { xloc = 0.0; }
+        if( xloc > 1.0 ) { xloc = 1.0; }
+
+        filledBlock.append( to_XML_with_pad("Spine_Location", toStr(xloc), pad ) );
+        filledBlock.append( to_XML_with_pad("Z_Offset", "0.000000", pad) );
+
+        filledBlock.append( to_XML_with_pad("Top_Tan_Ang", "0.000000", pad ) );
+        filledBlock.append( to_XML_with_pad("Top_Tan_Str_1", "0.250000", pad ) );
+
+        filledBlock.append( to_XML_with_pad("Top_Tan_Str_2", "0.250000", pad ) );
+        filledBlock.append( to_XML_with_pad("Bot_Tan_Ang", "0.000000", pad ) );
+        filledBlock.append( to_XML_with_pad("Bot_Tan_Str_1", "0.250000", pad ) );
+        filledBlock.append( to_XML_with_pad("Bot_Tan_Str_2", "0.250000", pad ) );
+        filledBlock.append( to_XML_with_pad("Left_Tan_Ang", "0.000000", pad ) );
+        filledBlock.append( to_XML_with_pad("Left_Tan_Str_1", "0.250000", pad ) );
+        filledBlock.append( to_XML_with_pad("Left_Tan_Str_2", "0.250000", pad ) );
+        filledBlock.append( to_XML_with_pad("Right_Tan_Ang", "0.000000", pad ) );
+        filledBlock.append( to_XML_with_pad("Right_Tan_Str_1", "0.250000", pad ) );
+        filledBlock.append( to_XML_with_pad("Right_Tan_Str_2", "0.250000", pad ) );
+        filledBlock.append( to_XML_with_pad("Num_Sect_Interp_1", "5", pad ) );
+        filledBlock.append( to_XML_with_pad("Num_Sect_Interp_2", "5", pad ) );
+        filledBlock.append( to_XML_with_pad("Top_Sym_Flag", "0", pad ) );
+        filledBlock.append( to_XML_with_pad("Side_Sym_Flag", "1", pad ) );
+          
+        filledBlock.append( to_XML_with_pad("Type", toStr(sect_type[i]), pad ) );
+        filledBlock.append( to_XML_with_pad("Height", toStr(yp[i]), pad ) );
+        filledBlock.append( to_XML_with_pad("Width", toStr(zp[i]), pad ) );
+
+        filledBlock.append( to_XML_with_pad("Max_Width_Location", "0.000000", pad ) );
+        filledBlock.append( to_XML_with_pad("Corner_Radius", "0.500000", pad ) );
+        filledBlock.append( to_XML_with_pad("Top_Tan_Angle", "90.000000", pad ) );
+        filledBlock.append( to_XML_with_pad("Bot_Tan_Angle", "90.000000", pad ) );
+        filledBlock.append( to_XML_with_pad("Top_Tan_Strength", "0.830000", pad ) );
+        filledBlock.append( to_XML_with_pad("Upper_Tan_Strength", "0.830000", pad ) );
+        filledBlock.append( to_XML_with_pad("Lower_Tan_Strength", "0.830000", pad ) );
+        filledBlock.append( to_XML_with_pad("Bottom_Tan_Strength", "0.830000", pad ) );
+
+        pad-=2;
+        filledBlock.append( rep_string(pad) + "</Cross_Section>");      
+      }
+    
+      pad-=2;
+      filledBlock.append( rep_string(pad) + "</Cross_Section_List>");
+      pad-=2;
+      filledBlock.append( rep_string(pad) + "</Component>");
+
+      clear_params();
+
+      return(returned_vsp_child_pointers);
+  }
+
+  /////////////////////////////////////////////////////////////////////////////////
+
+
+  int[] add_fuse_from_fit_points( real to_fit_xp[], real to_fit_yp[], int npts, int order, real xp[], string name, 
+                             int red, int green, int blue, int nsections, int pad, int parent_vsp_pointer ) {
+
+    int returned_vsp_child_pointers[] = {};
+    real xloc;
+    int next_sections = nsections;
+    int prev_sections = nsections;
+    int i;
+    int j;
+    int ii;
+    real max_x = -1.0E+12;
+    real min_x = 1.0E+12;
+    string ts;
+
+    real yp[] = {};
+    yp.resize(xp.entries());
+
+    real max_index = -1;
+    real min_index = -1;
+
+    int vsp_pointer = randomInt(1,9999999999);
+    returned_vsp_child_pointers.append(vsp_pointer);
+
+
+    if( npts <= 0 )  {
+      npts = min(to_fit_xp.entries(), to_fit_yp.entries());
+    }
+
+    if( order > ( npts - 1) ) { order = npts - 1; }
+
+    real coef[] = {};
+
+#ifdef FIT_USING_PYTHON
+    // THIS IS SLOW
+    //  WE NOW CALL THE LOCAL VERSION OF FITTING BELOW
+
+    OutFileStream points_csv;
+    InFileStream coef_csv;
+    string filename = comp_name->getName() + name + "_points.csv";
+    string coef_filename = comp_name->getName() + name + "_coef.csv";
+//    cout << filename << endl;
+
+    points_csv.open(filename); 
+    for( i = 0 ; i < npts ; i++ ) {
+      points_csv << to_fit_xp[i] << ", " << to_fit_yp[i] << endl;
+    }
+    points_csv.close();
+
+    string cmd;
+    cmd = "python pft.py " + filename + " " + coef_filename + " " + toStr(order);
+    system(cmd);
+
+    coef_csv.open(coef_filename);
+    coef_csv >> ts;
+//    cout << ts << endl;
+    coef_csv.close();
+
+    string ns;
+    
+    Tokenizer tk;
+    tk.sourceStr = ts;
+    while( ( ns = tk.getToken(",")) != "" ) {
+      coef.append(toReal(ns));
+    }
+
+//    cout << coef << endl;
+#endif    
+
+
+// CUBIC SPLINE INTERP
+// #include <tspline.int>
+//      real yp1 = 1.0E31;
+//      real ypn = 1.0E31;
+//      real y2[] = {};
+//      y2.resize(to_fit_xp.entries());
+//      spline(to_fit_xp,  to_fit_yp,  to_fit_xp.entries(),  yp1,  ypn, y2);
+
+
+    real x0 = 0.0;
+    coef = polfit(to_fit_xp, to_fit_yp, x0, to_fit_xp.entries(), order+1);
+
+    //cout << "COEF:" << coef << endl;
+
+    max_x = -1.0E+12;
+    min_x = 1.0E+12;
+    for( i = 0 ; i < xp.entries() ; i++ ) {
+
+      // Evalate polynomial at xp points - REF Numerical Recipies in C section 5.3
+      // Except our coefficents are in the opposite order
+      //      yp[i] = coef[coef.entries()-1];
+      //      for( j = (coef.entries()-2) ; j >= 0 ; j-- ) { yp[i] = yp[i]*xp[i] + coef[j]; }
+      yp[i] = 0.0;
+      for( j = 0 ; j < coef.entries() ; j++ ) { yp[i] = yp[i]*xp[i] + coef[j]; }
+
+
+      // TEST - CUBIC SPLINE INTERP
+      //yp[i] = splint(to_fit_xp,  to_fit_yp, y2, to_fit_xp.entries(), xp[i]);
+
+
+
+
+      // Keep the first and last point of the original data
+//       if( i == 0 ) {
+//         yp[i] = to_fit_yp[0];
+//       }
+//       if( i == (xp.entries() - 1 ) ) {
+//         yp[i] = to_fit_yp[to_fit_yp.entries()-1];
+//       }
+
+
+
+      //cout << xp[i] << "," << yp[i] << endl;
+
+      if( xp[i] < min_x ) {
+        min_x = xp[i];
+        min_index = i;
+      }
+      if( xp[i] > max_x ) {
+        max_x = xp[i];
+        max_index = i;
+      }
+    }
+    
+    filledBlock.append( rep_string(pad) + "<Component>");
+    pad += 2;
+    filledBlock.append( to_XML_with_pad("Type", "Fuselage", pad) );
+    filledBlock.append( rep_string(pad) + "<General_Parms>");
+    pad += 2;
+    
+    // INITIALIZE THE "General_Parms" TO DEFAULT VALUES
+    init_common_XML_general_parms(pad);
+    
+    // NOW CHANGE/UPDATE ANY "General_Parms" SPECIFIC TO THIS COMPONENT TYPE
+    ts = comp_name->getName() + "_" + name;
+    set_XML_general_parm("Name", ts, pad);
+    
+    xloc = min_x;
+    set_XML_general_parm("Tran_X", toStr(xloc), pad);
+
+
+    set_XML_general_parm("ColorR", toStr(red), pad);
+    set_XML_general_parm("ColorG", toStr(green), pad);
+    set_XML_general_parm("ColorB", toStr(blue), pad);
+    set_XML_general_parm("PtrID", toStr(vsp_pointer), pad);
+    set_XML_general_parm("Parent_PtrID", toStr(parent_vsp_pointer), pad);
+
+      // NO MORE CHANGES TO "General_Parms" SECTION - DUMP ALL THE VALUES TO THE "filledBlock" VARIABLE
+      copy_XML_general_parms_to_filledBlock();
+      
+      pad -= 2;
+      filledBlock.append( rep_string(pad) + "</General_Parms>");
+    
+      filledBlock.append( rep_string(pad) + "<Fuse_Parms>");
+      pad += 2;
+    
+//       filledBlock.append( to_XML_with_pad("DT_MAX_X", toStr(max_x), pad) );
+//       filledBlock.append( to_XML_with_pad("DT_MAX_X_INDEX", toStr(max_index), pad) );
+//       filledBlock.append( to_XML_with_pad("DT_MIN_X", toStr(min_x), pad) );
+//       filledBlock.append( to_XML_with_pad("DT_MIN_X_INDEX", toStr(min_index), pad) );
+      filledBlock.append( to_XML_with_pad("Fuse_Length", toStr(max_x - min_x), pad) );
+      filledBlock.append( to_XML_with_pad("Camber", "0.000000", pad) );
+      filledBlock.append( to_XML_with_pad("Camber_Location", "0.5", pad) );
+      filledBlock.append( to_XML_with_pad("Aft_Offset", "0.000000", pad) );
+      filledBlock.append( to_XML_with_pad("Nose_Angle", "0.000000", pad) );
+      filledBlock.append( to_XML_with_pad("Nose_Strength", "0.300000", pad) );
+      filledBlock.append( to_XML_with_pad("Nose_Rho", "0.5", pad) );
+      filledBlock.append( to_XML_with_pad("Aft_Rho", "0.5", pad) );
+      filledBlock.append( to_XML_with_pad("IML_Flag", "0", pad) );
+      filledBlock.append( to_XML_with_pad("Space_Type", "2", pad) );
+      filledBlock.append( to_XML_with_pad("Nose_Super_Flag", "0", pad) );
+      filledBlock.append( to_XML_with_pad("Aft_Super_Flag", "0", pad) );
+
+      pad -= 2;
+      filledBlock.append( rep_string(pad) + "</Fuse_Parms>");
+      
+      filledBlock.append( rep_string(pad) + "<Cross_Section_List>");
+      pad += 2;
+
+
+      for( ii = 0 ; ii < xp.entries() ; ii++ ) {
+        if( max_index > min_index ) { // acending x order
+          i = ii;
+        }
+        if( max_index < min_index ) { // decending x order
+          i = npts - 1 - ii;
+        }
+
+        filledBlock.append( rep_string(pad) + "<Cross_Section>");
+        pad+=2;
+        filledBlock.append( to_XML_with_pad("Num_Pnts", "21", pad) );
+
+        next_sections = nsections;
+        prev_sections = nsections;
+  
+        xloc = (xp[i] - min_x)/(max_x - min_x);
+        
+        if( i == 0 ) {
+          prev_sections = 0;
+        }
+
+        if( i == ( xp.entries() - 1 ) ) { 
+          next_sections = 0;
+        }
+
+        if( xloc < 0.0 ) { xloc = 0.0; }
+        if( xloc > 1.0 ) { xloc = 1.0; }
+
+//         filledBlock.append( to_XML_with_pad("DT_X", toStr(comp_name->xc[i]), pad) );
+
+        filledBlock.append( to_XML_with_pad("Spine_Location", toStr(xloc), pad ) );
+        filledBlock.append( to_XML_with_pad("Z_Offset", "0.000000", pad) );
+        filledBlock.append( to_XML_with_pad("Top_Thick", "0.500000", pad) );
+        filledBlock.append( to_XML_with_pad("Bot_Thick", "0.500000", pad) );
+        filledBlock.append( to_XML_with_pad("Side_Thick", "0.500000", pad) );
+        filledBlock.append( to_XML_with_pad("Act_Top_Thick", "0.500000", pad) );
+        filledBlock.append( to_XML_with_pad("Act_Bot_Thick", "0.500000", pad) );
+        filledBlock.append( to_XML_with_pad("Act_Side_Thick", "0.500000", pad) );
+        filledBlock.append( to_XML_with_pad("IML_X_Offset", "0.000000", pad) );
+        filledBlock.append( to_XML_with_pad("IML_Z_Offset", "0.000000", pad) );
+        filledBlock.append( to_XML_with_pad("ML_Type", "0", pad) );
+        filledBlock.append( to_XML_with_pad("IML_Flag", "0", pad) );
+        filledBlock.append( to_XML_with_pad("Profile_Tan_Str_1", "0.250000", pad) );
+        filledBlock.append( to_XML_with_pad("Profile_Tan_Str_2", "0.250000", pad) );
+        filledBlock.append( to_XML_with_pad("Profile_Tan_Ang", "0.000000", pad) );
+        filledBlock.append( to_XML_with_pad("Num_Sect_Interp_1", toStr(prev_sections), pad) );
+        filledBlock.append( to_XML_with_pad("Num_Sect_Interp_2", toStr(next_sections), pad) );
+        
+        filledBlock.append( rep_string(pad) + "<OML_Parms>");
+        pad+=2;
+
+        if( (abs(yp[i]) - 1.0e-6 ) < 0.0 ) {
+          filledBlock.append( to_XML_with_pad("Type", "0", pad) );
+        } else {
+          filledBlock.append( to_XML_with_pad("Type", "1", pad) );
+        }
+        filledBlock.append( to_XML_with_pad("Height", toStr(yp[i]), pad) );
+        filledBlock.append( to_XML_with_pad("Width", toStr(yp[i]), pad) );
+        filledBlock.append( to_XML_with_pad("Max_Width_Location", "0.000000", pad) );
+        filledBlock.append( to_XML_with_pad("Corner_Radius", "0.500000", pad) );
+        filledBlock.append( to_XML_with_pad("Top_Tan_Angle", "90.000000", pad) );
+        filledBlock.append( to_XML_with_pad("Bot_Tan_Angle", "90.000000", pad) );
+        filledBlock.append( to_XML_with_pad("Top_Tan_Strength", "0.830000", pad) );
+        filledBlock.append( to_XML_with_pad("Upper_Tan_Strength", "0.830000", pad) );
+        filledBlock.append( to_XML_with_pad("Lower_Tan_Strength", "0.830000", pad) );
+        filledBlock.append( to_XML_with_pad("Bottom_Tan_Strength", "0.830000", pad) );
+        
+        pad-=2;
+        filledBlock.append( rep_string(pad) + "</OML_Parms>");
+      
+        filledBlock.append( rep_string(pad) + "<IML_Parms>");
+        pad+=2;
+
+        filledBlock.append( to_XML_with_pad("Type", "1", pad) );
+        filledBlock.append( to_XML_with_pad("Height", toStr(yp[i] * 0.9), pad) ); // TBD THICKNESS
+        filledBlock.append( to_XML_with_pad("Width", toStr(yp[i] * 0.9), pad) );
+        filledBlock.append( to_XML_with_pad("Max_Width_Location", "0.000000", pad) );
+        filledBlock.append( to_XML_with_pad("Corner_Radius", "0.500000", pad) );
+        filledBlock.append( to_XML_with_pad("Top_Tan_Angle", "90.000000", pad) );
+        filledBlock.append( to_XML_with_pad("Bot_Tan_Angle", "90.000000", pad) );
+        filledBlock.append( to_XML_with_pad("Top_Tan_Strength", "0.830000", pad) );
+        filledBlock.append( to_XML_with_pad("Upper_Tan_Strength", "0.830000", pad) );
+        filledBlock.append( to_XML_with_pad("Lower_Tan_Strength", "0.830000", pad) );
+        filledBlock.append( to_XML_with_pad("Bottom_Tan_Strength", "0.830000", pad) );
+      
+        pad-=2;
+        filledBlock.append( rep_string(pad) + "</IML_Parms>");
+        
+        pad-=2;
+        filledBlock.append( rep_string(pad) + "</Cross_Section>");
+      
+      }
+    
+      pad-=2;
+      filledBlock.append( rep_string(pad) + "</Cross_Section_List>");
+      pad-=2;
+      filledBlock.append( rep_string(pad) + "</Component>");
+
+      clear_params();
+      return(returned_vsp_child_pointers);
+  }
+
+  /////////////////////////////////////////////////////////////////////////////////
+
+
+  int[] add_vsp_blank(string name, int pad, int vsp_pointer, int parent_vsp_pointer, int vsp_child_pointers[] ) {
+
+    int returned_vsp_child_pointers[] = {};
+    int rc;
+
+    returned_vsp_child_pointers.append(vsp_pointer);
+
+
+    clear_params();
+    
+    filledBlock.append( rep_string(pad) + "<Component>");
+    pad += 2;
+    filledBlock.append( to_XML_with_pad("Type", "Blank", pad) );
+    
+    filledBlock.append( rep_string(pad) + "<General_Parms>" );
+    pad += 2;
+
+    init_common_XML_general_parms(pad);
+    
+    // NOW CHANGE/UPDATE ANY "General_Parms" SPECIFIC TO THIS COMPONENT TYPE
+
+    set_XML_general_parm("Name", name, pad);
+    set_XML_general_parm("PtrID", toStr(vsp_pointer), pad);
+    set_XML_general_parm("Parent_PtrID", toStr(parent_vsp_pointer), pad);
+
+    copy_XML_general_parms_to_filledBlock();
+
+    for( rc = 0 ; rc > vsp_child_pointers.entries() ; rc++ ) {
+      filledBlock.append( to_XML_with_pad( "Children_PtrID", toStr( vsp_child_pointers[rc] ) , pad ) );
+    }
+
+    pad -= 2;
+    filledBlock.append( rep_string(pad) + "</General_Parms>");
+
+    filledBlock.append( rep_string(pad) + "<Blank_Parms>");
+    pad += 2;
+
+    filledBlock.append( to_XML_with_pad("PointMassFlag", "0", pad) );
+    filledBlock.append( to_XML_with_pad("PointMass", "0.0", pad) );
+
+    pad -= 2;
+    filledBlock.append( rep_string(pad) + "</Blank_Parms>");
+
+
+    pad -= 2;
+    filledBlock.append( rep_string(pad) + "</Component>");
+
+    return(returned_vsp_child_pointers);
+
+  }
+
+  /////////////////////////////////////////////////////////////////////////////////
+
+}
+
+  
+
+
+
+
+
+
+/////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
+
+
+//
+
+// class flight_conditions_vsp_xml extends common_comp_base_TB
+// { 
+//    void update() {
+//        string s = "";
+//        filledBlock = { };
+//        s = "  MACH NUMBER   ";
+//        //filledBlock.append("<" + s + ">" + toStr(comp_name->MN) + "</" + s + ">");
+//        filledBlock.append( to_XML( s, toStr(comp_name->MN) ) );
+//    }
+// }
+
+// //
+
+// class header_vsp_xml extends common_comp_base_TB
+// {
+//    void update() {
+//        filledBlock = { }; 
+//        filledBlock.append("-=> HEADER <=-");
+//    }
+// }
+
+// //
+
+// DataViewer PageViewer pv {
+
+//   header_vsp_xml hblock { comp_name = ""; };
+//   flight_conditions_vsp_xml fcblock { comp_name = "Ambient"; } ;
+
+//   anchor = "hblock";
+//   hblock.bottom = "fcblock"; 
+// }
+
+//
+
+#endif

@@ -1,0 +1,1 @@
+component_list=[ "Map_plotting/mapDataFan.txt", "Map_plotting/mapDataHPC.txt", "Map_plotting/mapDataHPT.txt", "Map_plotting/mapDataLPT.txt", "done" ]

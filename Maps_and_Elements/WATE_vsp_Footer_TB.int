@@ -1,0 +1,31 @@
+
+#ifndef _WATE_vsp_Footer_INT
+#define _WATE_vsp_Footer_INT
+
+#include "WATE_vsp_COMMON_TB.int"
+
+
+/**
+ *Author: Tim Unton
+ *Updated: 2/18/10
+ ****************************************************************/
+class WATE_vsp_Footer_TB extends WATE_vsp_common_TB
+{
+       
+  /**
+   *
+   ****************************************************************/
+  void update() {
+    int pad = 2; 
+    
+    filledBlock = { };
+    
+    filledBlock.append(rep_string(pad) + "</Component_List>");
+    filledBlock.append(rep_string(pad) + "<Label_List/>");
+    pad -= 2;
+    filledBlock.append(rep_string(pad) + "</Vsp_Geometry>");
+  }
+}
+
+#endif
+

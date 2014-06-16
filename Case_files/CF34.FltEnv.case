@@ -1,0 +1,27 @@
+//------------------- Run Entire Flight Envelope ------------------ 
+
+cout << "----------------------------------------------------------\n";
+cout << "               RUNNING FULL FLIGHT ENVELOPE               \n";
+cout << "----------------------------------------------------------\n";
+
+CASE = 1000; 
+MODELNAMEALT = "Performance FLight Envelope";
+
+// Can use a different amount of customer bleed for the FLOPS flight envelope data: 
+HPC.BleedSave = HPC.BleedFlow;
+HPC.BleedFlow = custBleedop1; 
+
+// Run the low-altitude deck:
+deck_low(maxNcop1, maxT4SLSop1, maxT4RTOop1);
+system("move deck.txt Output/CF34.deck_low.out");
+
+// Run the high-altitude deck:
+deck_high(maxNcop1, maxT4SLSop1, maxT4RTOop1);
+system("move deck.txt Output/CF34.deck_high.out");
+
+system("copy Output\CF34.deck_low.out + Output\CF34.deck_high.out Output\CF34.deck.out > Output\msg.txt /y");
+
+// Reset customer bleed before exiting:
+HPC.BleedFlow = HPC.BleedSave;
+
+MODELNAMEALT = " ";

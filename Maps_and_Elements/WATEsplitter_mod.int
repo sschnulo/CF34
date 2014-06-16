@@ -1,0 +1,178 @@
+#ifndef _WATESPLITTER_
+#define _WATESPLITTER_
+//
+//   description:	calculates weight & dimensions of splitter.
+//
+class WATEsplitter_mod extends WATEelement 
+{
+   //DESVAL(1)
+   real MNin {
+     value = 0.0 ;					 
+     IOstatus = "input";
+     description = "Entrance MN" ;
+     units = "none" ;
+   }  
+
+   // ????????? Ratio of which radii ????????????????????
+   //DESVAL(2)
+   real inletRR {
+     value = 0.0 ;					 
+     IOstatus = "input";
+     description = "Entrance radius ratio" ;
+     units = "none" ;
+   }   
+
+   //DESVAL(3)
+   real innerWallRadius {
+     value = 0.0 ;					 
+     IOstatus = "input";
+     description = "Radial location of splitter inner wall. If zero, radius set by previous component" ;
+     units = "in" ;
+   }
+
+   // JSS added
+   string NPSSAreaFlag {     	 
+     IOstatus = "input";
+     description = "Flag to pass NPSS areas for splitter directly to WATE" ;
+        }
+
+   real coreArea {
+     value = 0.0 ;					 
+     IOstatus = "input";
+     description = "Splitter primary area" ;
+     units = "in2" ;
+   }
+
+   
+   // override the default output port names
+   wateOutPortNames = { "outPortPrimary","outPortSecondary" };
+   
+   defaultHideLevel = 2;
+   
+   string fanRef;
+   real rsi,rso; 
+   
+   defaultHideLevel = 1;
+   
+   real des_BPR;
+   
+   defaultHideLevel = 0;
+   
+   WATEInputPort inPort;
+   WATEOutputPort outPortPrimary;
+   WATEOutputPort outPortSecondary;
+   
+   // design point values
+   FlowStation des_Fl_I;
+   
+   
+  /**
+   * 
+   ********************************************************************/    
+   void calculate() {
+      
+      real wIn,TtIn,PtIn,gamIn,ai;
+
+      inPort.innerRadius = inPort.innerRadiusUp;
+      inPort.outerRadius = inPort.outerRadiusUp;
+
+
+//
+//     establish input values and determine dimensions
+//
+      if (MNin != 0.) { 
+         wIn = des_Fl_I.W; 
+         TtIn = des_Fl_I.Tt;
+         PtIn = des_Fl_I.Pt; 
+         gamIn = des_Fl_I.gamt;
+         
+         ai = calcDuctArea (TtIn, PtIn, wIn, gamIn, MNin);
+         
+         rso = sqrt(ai*144./PI/(1.-inletRR*inletRR));
+         rsi = rso*inletRR;
+
+         }
+      else {
+	   rso = inPort.outerRadius;
+         rsi = inPort.innerRadius;
+
+//
+//  add ability to radially position splitter.
+//
+         if(innerWallRadius > 0.) {
+            rso = sqrt(innerWallRadius*innerWallRadius + rso*rso - rsi*rsi);
+            rsi = innerWallRadius;
+         }
+      }
+      
+
+//JSS Added to allow splitter to match NPSS areas
+      if(NPSSAreaFlag == "on"){	
+		real rm  = sqrt((rsi*rsi)+(coreArea/PI));
+	} else {      
+      	real rm = sqrt((rso*rso+des_BPR*rsi*rsi)/(1.+des_BPR));
+	}
+     
+      outPortPrimary.innerRadius = rsi;
+      outPortPrimary.outerRadius = rm;
+      outPortPrimary.axialPosition = inPort.axialPosition;
+      
+      outPortSecondary.innerRadius = rm;
+      outPortSecondary.outerRadius = rso;
+
+
+      if(fanRef == "") {
+         outPortSecondary.axialPosition = inPort.axialPosition;
+      }
+      else {
+         outPortSecondary.axialPosition = fanRef->bypassLength;
+      }
+      
+      weight = 0.;
+      length = 0.;
+
+
+   }
+   
+   
+   
+  /**
+   * 
+   ********************************************************************/    
+   void saveMechDesignData() {
+      des_Fl_I.copyFlowStatic(componentRef+".Fl_I");
+      des_BPR = componentRef->BPR;
+   }
+
+  /**
+   * FOR DESIGN CASE  CALCULATE AN AREA
+   ********************************************************************/    
+   real calcDuctArea (real inTemp, real Pinput, real Win, real gamma, 
+                      real machNum) 
+   {
+       real R = 53.34;
+       real G = 32.174;
+
+       if (machNum <= 0.) { 
+          throwError("negative or 0 mach number in calcDuctArea()");
+       }
+       
+       return Win/machNum*sqrt(R/gamma*G*inTemp)/Pinput*
+                (1.+(gamma-1.)/2.*machNum*machNum)**((gamma+1.)/(gamma-1.)/2.)/G;
+   }
+
+   
+  /**
+   * 
+   ********************************************************************/    
+   int verify() {
+      if(fanRef == "") {
+         fanRef = findUpStreamComponent("WATEfan");
+      }
+      return 1;
+   }
+}
+
+#endif
+
+

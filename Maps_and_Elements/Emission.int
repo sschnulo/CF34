@@ -1,0 +1,521 @@
+
+#ifndef __NEPPEI__
+#define __NEPPEI__
+
+// ****************************************************************************
+// * NASA Glenn Research Center
+// * 21000 Brookpark Rd
+// * Cleveland, OH 44135
+// *
+// * NPSS NICE-1 Proprietary Information
+// * Do not release outside of the NICE-1 Government/Industry team members
+// ****************************************************************************
+
+
+#include <InterpIncludes.ncp>
+
+class NeppEI extends Subelement {
+
+//------------------------------------------------------------
+//     ******* DOCUMENTATION *******
+//------------------------------------------------------------
+
+   title =
+" 
+                      EMISSIONS SUBELEMENT
+ 
+                    retrieves:  FAR
+                      returns:  NOTHING
+                                ^
+                                |
+                         ----------------
+                        |               |
+                        |               |
+                        |   EMISSIONS   |
+                        |               |
+                        |               |
+                         ----------------
+
+
+
+";
+  description = isA() + " calculates the NOx emmissions indicies for a combuster";
+
+  usageNotes = 
+
+"
+  Calculates an approximate emissions index for the oxides of nitrogen (NOx) 
+  for a given combustor.  There are many different emperical relationships
+  supplied that are chosen based on an option variable. The emission index 
+  is in (gm-NOx)/(kg-fuel).
+  
+  This elements is designed to work with the burner element to determine a
+  NOx emissions index.  Since the burner currently does not have a socket
+  for this subelement, it must declared in the Burner and then run in a 
+  postexecute function.  No values are returned to high level.  However,
+  a local value of EINOx is available and can queried from the model.  Also, 
+  if the calculation used depends on the humidity factor, the user must 
+  supply an altitude or a reference name to the altitude value elsewhere in 
+  the model.  Finally, the HSR calculation is based on pulling in values at 
+  the top of climb point.  To do this, the user must specify to the element 
+  through a flag that this is the top of climb point.  This flag must be 
+  manually set back after the top of climb point has been run.
+   
+";
+
+ 
+
+ 
+//------------------------------------------------------------
+//     ******* SETUP VARIABLES ********
+//------------------------------------------------------------
+  
+  string altName{
+    IOstatus = INPUT; units = NOUNIT;
+    description = "Reference to the altitude variable in the model";
+  }
+  real alt{
+    value = 0; IOstatus = INPUT; units = FT;
+    description = "Alititude used to calculate the humidity correction";
+  }
+  real EINOx{
+    value = 0;  IOstatus = OUTPUT;  units = NONE;
+    description = "NOx emissions index";
+  }
+  real EICO{	// Not Used
+    value = 0;  IOstatus = OUTPUT;  units = NONE;
+    description = "CO emissions index";
+  }
+  real EIHC{	// Not Used
+    value = 0;  IOstatus = OUTPUT;  units = NONE;
+    description = "HC emissions index";
+  }
+  real EICLE_EINOx{
+    value = 0;  IOstatus = OUTPUT;  units = NONE;
+    description = "NOx emissions index";
+  }
+  real AST_EINOx{
+    value = 0;  IOstatus = OUTPUT;  units = NONE;
+    description = "NOx emissions index";
+  }
+  real Tt3toc{
+    value = 1500.;  IOstatus = OUTPUT;  units = RANKINE;
+    description = "Maximum burner entrance temperature (assumed to be at top of climb)";
+  }
+  real Pt4toc{
+    value = 200.;  IOstatus = OUTPUT;  units = PSIA;
+    description = "Burner exit pressure at top of climb";
+  }
+  real Pt3toc{
+    value = 200.;  IOstatus = OUTPUT;  units = PSIA;
+    description = "Burner exit pressure at top of climb";
+  }
+  real Tt4toc{
+    value = 3000.;  IOstatus = OUTPUT;  units = RANKINE;
+    description = "Burner exit temperature at top of climb";
+  }
+  string ptrAltName;
+
+  real Tflame{
+    value = 0;  IOstatus = OUTPUT;  units = RANKINE;
+    description = "Flame temperature";
+  }
+  real Wtoc{
+    value = 100.;  IOstatus = OUTPUT;  units = RANKINE;
+    description = "Burner airflow at top of climb";
+  }
+  real humFact{
+    value = 0;  IOstatus = OUTPUT;  units = NONE;
+    description = "Humidity Factor";
+  }
+  real Vref{
+    value = 88.0;  IOstatus = OUTPUT;  units = FT_PER_SEC;
+    description = "Reference velocity";
+  }
+  real vol{
+    value = 0;  IOstatus = OUTPUT;  units = INCH3;
+    description = "Combustor volume";
+  }	
+  real restmin{
+    value = 0;  IOstatus = OUTPUT;  units = SEC;
+    description = "Residence time";
+  }
+  int TOC{
+    value = 0; IOstatus = INPUT; units = NONE;
+    description = "Flag indication if engine is being run at TOC 
+                  ( 0 - NO, 1 -YES )";
+  }
+  real const {
+    value = 1.0; IOstatus = INPUT; units = NONE;
+    description = "Constant factor to scale EI correlation, 
+                  for GE, GE07, and UTEP equations";
+  }
+  real delphi{
+    value = .75; IOstatus = INPUT; units = NONE;
+    description = "Allows the user to predefine combustor cooling  
+                  (changes fuel to air ratio for EI)";
+  }
+
+  // variables for 2004-2005 VISTA studies, EICLE correlation
+  real a0; 
+  real a1 = 0.35; 
+  real a2 = 300.; 
+  real a3 = 2.4; 
+  real PCT_Reduction = 0.70;   // default value
+
+  real PCT_NOx = 0; // for EDS	
+  real NOXadder = 0;
+  real NOXangle = 0;
+  //-------------------------------------------------------------
+  // ****** SETUP PORTS, FLOW STATIONS, SOCKETS, TABLES ********
+  //-------------------------------------------------------------
+
+  // FLOW STATIONS
+
+  Table humFactTbl( real altT ){
+    altT =     { 0.0, 2500, 5000, 7500, 10000, 12500, 15000, 17500, 20000,
+		22500, 25000, 27500, 30000, 32500, 35000 }
+    humFactT = { .00630,.00495,.00390,.00295,.00220,.00155,.00110,.00078,.00052,
+		.00037,.00022,.00015,.00010,.00005,.00000 }
+  }
+
+  Table Tb_a0( real cooling_air, real reduction ) { 
+     reduction = 0.25 { 
+       cooling_air = {  0.01,   0.06,   0.08,   0.10,   0.12,   0.15,   0.20,   0.25 } 
+       a_zero =      { 517.5,  467.7,  449.5,  432.1,  415.4,  391.9,  356.0,  323.5 }
+     } 
+     reduction = 0.30 { 
+       cooling_air = *; 
+       a_zero =      { 491.0,  442.6,  424.9,  408.0,  392.0,  369.2,  334.6,  303.4 }
+     } 
+     reduction = 0.35 { 
+       cooling_air = *; 
+       a_zero =      { 463.6,  416.7,  399.6,  383.3,  367.9,  346.0,  312.8,  282.9 }
+     } 
+     reduction = 0.40 { 
+       cooling_air = *; 
+       a_zero =      { 435.2,  390.0,  373.6,  358.0,  343.2,  322.2,  290.5,  262.0 }
+     } 
+     reduction = 0.45 { 
+       cooling_air = *; 
+       a_zero =      { 405.8,  362.4,  346.7,  331.9,  317.7,  297.8,  267.7,  240.6 }
+     } 
+     reduction = 0.50 { 
+       cooling_air = *; 
+       a_zero =      { 375.2,  333.9,  319.0,  304.9,  291.6,  272.8,  244.3,  218.9 }
+     } 
+     reduction = 0.55 { 
+       cooling_air = *; 
+       a_zero =      { 343.2,  304.3,  290.3,  277.1,  264.6,  247.0,  220.4,  196.6 }
+     } 
+     reduction = 0.60 { 
+       cooling_air = *; 
+       a_zero =      { 309.7,  273.5,  260.5,  248.2,  236.7,  220.4,  195.9,  173.9 }
+     } 
+     reduction = 0.65 { 
+       cooling_air = *; 
+       a_zero =      { 274.4,  241.3,  229.4,  218.3,  207.8,  193.0,  170.7,  150.6 }
+     } 
+     reduction = 0.70 { 
+       cooling_air = *; 
+       a_zero =      { 237.0,  209.0,  198.0,  188.0,  178.0,  164.6,  144.7,  126.8 }
+     } 
+     reduction = 0.75 { 
+       cooling_air = *; 
+       a_zero =      { 197.1,  168.0,  160.0,  152.0,  144.0,  135.2,  118.0,  102.3 }
+     } 
+     reduction = 0.80 { 
+       cooling_air = *; 
+       a_zero =      { 154.0,  136.0,  129.0,  122.0,  116.0,  104.5,   90.3,   77.2 }
+     } 
+     reduction = 0.85 { 
+       cooling_air = *; 
+       a_zero =      { 106.9,   94.0,   89.0,   84.0,   80.0,   72.5,   61.7,   51.3 }
+     } 
+     reduction = 0.90 { 
+       cooling_air = *; 
+       a_zero =      {  54.4,   50.0,   47.0,   45.0,   42.0,   39.0,   32.0,   24.7 }
+     } 
+  }
+
+  Table Tb_EI( real power_setting, real reduction ) { 
+     power_setting = 0.35 { 
+        reduction = { 0.70, 0.75, 0.80, 0.85, 0.90 } 
+        low_PC_EI = {  9.0,  8.5,  6.5,  5.5,  5.0 } 
+     } 
+     power_setting = 0.20 { 
+        reduction = *; 
+        low_PC_EI = {  9.0,  8.5,  6.5,  5.5,  5.0 } 
+     } 
+     power_setting = 0.19 { 
+        reduction = *; 
+        low_PC_EI = {  5.0,  4.5,  3.5,  3.5,  3.5 } 
+     } 
+     power_setting = 0.05 { 
+        reduction = *; 
+        low_PC_EI = {  5.0,  4.5,  3.5,  3.5,  3.5 } 
+     } 
+  } 
+
+//------------------------------------------------------------
+//   ******* OPTION VARIABLE SETUP *******
+//------------------------------------------------------------
+  Option switchCalcType {
+    allowedValues = { "GE", "GEO7", "LERC_LPP", "ALLISON_LPP", "GEN_HSR", "AST",
+		      "DD_ECCP1", "AST05", "LERC_RQL", "LERC_TALON", "DD_ECCP2",
+		      "DAC17", "NEWAST", "UTEP", "EICLE", "EICLE_AST", "P3T3" }
+    description = "Determine which type of calculation is used";
+  }
+
+//------------------------------------------------------------
+//   ******* PERFORM ENGINEERING CALCULATIONS *******
+//------------------------------------------------------------
+  void calculate() {
+    
+    int value;
+	
+    //-----------------------------------------------------
+    // if the user has input a reference the altitude then
+    // go grab it 
+    //-----------------------------------------------------
+    if ( altName != "" ) {
+      alt = ptrAltName->value;
+    }
+
+    //-----------------------------------------------------
+    // grab Tt3, Pt3, Tt4, and W3 from the ports
+    //-----------------------------------------------------
+    real Tt3 = Fl_I.Tt;
+    real Pt3 = Fl_I.Pt;
+    real W3 = Fl_I.W;
+    real Tt4 = Fl_O.Tt;
+    real Pt4 = Fl_O.Pt;
+
+    //-----------------------------------------------------
+    // bound the humdity factor calculations
+    //-----------------------------------------------------
+    if ( alt < 0.0 ) {
+      humFact = .0063;
+    }
+    else if ( alt > 35000.0 ) {
+      humFact = .0;
+    }
+    else {
+      humFact = humFactTbl( alt );
+    }
+
+    //-----------------------------------------------------
+    // (1) GE's EI correlation
+    //-----------------------------------------------------
+    if ( switchCalcType == "GE" ) {
+      const = 27.8 * 0.7 * ( 58.93 / Vref ) * 0.8883 / 2760.0;
+      EINOx = const * ( Pt3 / 439.0 )**0.37 * exp(( Tt3 - 1471.0 )/ 345.0 ) * Tt4;
+    }
+
+    //-----------------------------------------------------
+    // (2) GE's EI correlation/7
+    //-----------------------------------------------------
+    if ( switchCalcType == "GEO7" ) {
+      const = 27.8 * 0.7 * ( 58.93 / Vref ) * .8883 / 2760.0 / 7.0;
+      EINOx = const * ( Pt3 / 439.0 )**0.37 * exp(( Tt3 - 1471.0 )/ 345.0 ) * Tt4;
+    }
+
+    //-----------------------------------------------------
+    // (3) LeRC Chi Lee LPP flame tube correlation
+    //-----------------------------------------------------
+    if ( switchCalcType == "LERC_LPP" ) {
+      EINOx = 2.0e-54 * Tt4**14.32 * Tt3**2.439 * Pt3**(-0.201) / Vref**1.658;
+    }
+
+    //-----------------------------------------------------
+    // (4) Allison LPP combustor rules
+    //-----------------------------------------------------
+    if ( switchCalcType == "ALLISON_LPP" ) {
+      EINOx = 0.0000758 * ( Pt3 * 6.8948 )**0.75 * (( 0.0075 * Tt3 / Tt4 )**0.5) * 
+	exp( 0.0045 * Tt4 / 1.8 );
+    }
+
+    //-----------------------------------------------------
+    // (5) General HSR rules
+    //-----------------------------------------------------
+    if ( switchCalcType == "GEN_HSR" ) {
+
+      //-----------------------------------------------------
+      // Check to see if this is TOC (if it is then grab
+      // the values, otherwise use placeholders/guesses)
+      //-----------------------------------------------------
+      if ( TOC == 1 ) {
+	Wtoc = W3;
+	Pt3toc = Pt3;
+	Tt3toc = Tt3;
+	Tt4toc = Tt4;
+	Pt4toc = Pt4;
+      }
+
+      vol = Tt4toc * Wtoc / Pt4toc / 932.;
+      if ( Tt3 < 1110. ) {
+	EINOx = .01555 * Tt3 - 8.3;
+      }
+      else{
+	restmin = 2702.0 * vol * Pt4 / W3 / Tt4;
+	Tflame = Tt3 + 1.1765 * ( Tt4 - Tt3 );
+	if ( Tflame < 3600.0 ) { Tflame = 3600.; }
+
+  	EINOx = ( Tt3toc / 1000.0 - .46 )* restmin * exp( -72.28 + 2.087 * 
+  	        ( Tflame )**0.5 - 0.014611 * Tflame );
+      }
+    }
+
+
+    //-----------------------------------------------------
+    // (6) Conventional AST Combustor Correlation
+    //-----------------------------------------------------
+    if ( switchCalcType == "AST" ) {
+	//cerr << "EI hum " << humFact << endl;
+      EINOx = 33.20 * ( Pt3 / 432.70 )**0.40 * exp(( Tt3 - 459.67 - 1027.60 )
+              / 349.90 + ( 6.290 - 1000.0 * humFact )/ 53.20 );  
+
+      AST_EINOx = 33.20 * ( Pt3 / 432.70 )**0.40 * exp(( Tt3 - 459.67 - 1027.60 )
+              / 349.90 + ( 6.290 - 1000.0 * humFact )/ 53.20 );
+    }
+
+    //-----------------------------------------------------
+    // (7) Double Dome ECCP Type Combustor Correlation
+    //-----------------------------------------------------
+    if ( switchCalcType == "DD_ECCP1" ) {
+      EINOx = 23.80 * ( Pt3 / 432.70 )**0.40 * exp(( Tt3 - 459.67 - 1027.60 ) 
+              / 349.90 + ( 6.290 - 1000.0 * humFact )/ 53.20 );
+    }
+     
+    //-----------------------------------------------------
+    // (8) Double Dome ECCP Type Combustor Correlation for AST 2005 Goals:
+    //-----------------------------------------------------
+    if ( switchCalcType == "AST05" ) {
+      EINOx = 10.52 * ( Pt3 / 432.70 )**0.40 * exp(( Tt3 - 459.67 - 1027.60 ) 
+              / 349.90 + ( 6.290 - 1000.0 * humFact ) / 53.20 );
+    }
+
+    //-----------------------------------------------------
+    // (9) LeRC rich burn/quick quench/lean burn combustor
+    //-----------------------------------------------------
+    if ( switchCalcType == "LERC_RQL" ) {
+      EINOx = 1.904e-17 *( Pt3**1.41 )*( Tt3**2.40 )*( Tt4**1.68 )*18.33**0.795;
+    }
+
+    //-----------------------------------------------------
+    // (10) LeRC correlation for Talon combustor
+    //-----------------------------------------------------
+    if ( switchCalcType == "LERC_TALON" ) {
+      const = -4441380.4945*(FAR/delphi )**4.0 + 399807.8775*(FAR/delphi)**3.0 -
+              12731.2999*(FAR/delphi)**2.0 + 163.814*(FAR/delphi) - 0.5436;
+      EINOx = const * ( Pt3**0.34 ) * exp(Tt3*0.0024);
+    }
+
+    //-----------------------------------------------------
+    // (16) New AST correlation 
+    //  GE new correlations for Singular Annular Combustor
+    //            April 1998 (From Chi-Ming Lee)
+    //-----------------------------------------------------
+    if ( switchCalcType == "NEWAST" ) {
+      EINOx = 0.068 * ( Pt3**0.5 ) * exp(( Tt3 - 459.67 )/ 345.0 ) * 
+                  exp( humFact * 2.7114e-3 );
+    }
+
+    //-----------------------------------------------------
+    // (17) GE new correlations for Dual Annular Combustor (DAC) 
+    //            April 1998 (From Chi-Ming Lee)
+    //-----------------------------------------------------
+    if ( switchCalcType == "DD_ECCP2" ) {
+      EINOx = 3.9 * ( Pt3**0.370 ) * exp(( Tt3 - 459.67 )/ 349.90 ) * 
+                  exp( humFact * 2.7114e-3) * FAR / delphi;
+    }
+
+    //-----------------------------------------------------
+    // (18) GE new correlations for Staged Dual Annular Combustor (DAC) 
+    //            April 1998 (From Chi-Ming Lee)
+    //-----------------------------------------------------
+    if ( switchCalcType == "DAC17" ) {
+      EINOx = 8.8 * ( Pt3**0.370 ) * exp(( Tt3 - 459.67 )/ 349.90 ) * 
+                  exp( humFact * 2.7114e-3) * FAR / delphi;
+    }
+
+    //-----------------------------------------------------
+    // (11) UTEP  (LeRC NOx EI equation)
+    //-----------------------------------------------------
+    if ( switchCalcType == "UTEP" ) {
+      EINOx = const * (Pt3**0.5945) * exp( ( Tt3 - 459.67 ) * 0.002867 ) * 
+            (( FAR / delphi )**1.6876) * ( (Pt3/Pt4 - 1.0 )*100. )**( -0.5651 );
+    }
+
+    //-----------------------------------------------------
+    //   Emissions Index Correlation for Large Engines
+    //   from correlation supplied by Chi-Ming Lee, John Rohde
+    //-----------------------------------------------------
+    if ( switchCalcType == "EICLE" ) {
+      a0 = Tb_a0( 1.0-delphi, PCT_Reduction );
+      EINOx = a0 * ( Pt3**a1 ) * exp(( Tt3 - 459.67 )/a2 ) * (FAR/delphi)**a3;
+
+      real pwr_sttng = PercentPower(PC); 
+      if ( pwr_sttng <= 0.301 ) { 
+         EINOx = Tb_EI( pwr_sttng, PCT_Reduction ); 
+      }
+    }
+ 
+    //-----------------------------------------------------
+    // EICLE and New Conventional AST Combustor Correlation
+    //-----------------------------------------------------
+    if ( switchCalcType == "EICLE_AST" ) {
+      a0 = Tb_a0( 1.0-delphi, PCT_Reduction );
+      EICLE_EINOx = a0 * ( Pt3**a1 ) * exp(( Tt3 - 459.67 )/a2 ) * (FAR/delphi)**a3;
+
+      real pwr_sttng = PercentPower(PC); 
+      if ( pwr_sttng <= 0.301 ) { 
+         EICLE_EINOx = Tb_EI( pwr_sttng, PCT_Reduction ); 
+	  }
+
+      AST_EINOx = 33.20 * ( Pt3 / 432.70 )**0.40 * exp(( Tt3 - 459.67 - 1027.60 )/ 349.90 + ( 6.290 - 1000.0 * humFact )/ 53.20 );
+	
+    }
+
+    //-----------------------------------------------------
+    // P3T3 Emissions Correlation
+    //-----------------------------------------------------
+    if ( switchCalcType == "P3T3" ) {
+      #include <P3T3correlation.int>
+	}
+
+  } // end calculate
+
+//------------------------------------------------------------
+//   ******* perform one time calculations *******
+//------------------------------------------------------------
+  int verify() {
+
+    //--------------------------------------------------------
+    // if the user has input an altitude reference then
+    // point the pointer at it
+    //--------------------------------------------------------
+    string temp1;
+    if ( altName != "" ){
+      temp1 = "." + altName;
+      ptrAltName = temp1;
+    }
+
+    return 1;
+
+  } // end verify
+
+  //------------------------------------------------------------
+  // ******* VARIABLE CHANGED METHODOLOGY *******
+  //------------------------------------------------------------
+  void variableChanged( string name, any oldVal ) {
+
+    if ( name == "altName" ){ 
+      alt.IOstatus = OUTPUT;
+    }
+
+  }
+
+} // end class
+
+#endif

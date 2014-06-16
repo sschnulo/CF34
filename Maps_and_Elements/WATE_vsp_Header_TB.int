@@ -1,0 +1,57 @@
+#ifndef _WATE_vsp_Header_INT
+#define _WATE_vsp_Header_INT
+#include "WATE_vsp_COMMON_TB.int"
+
+/**
+ *Author: Tim Unton
+ *Updated: 2/18/10
+ ****************************************************************/
+
+class WATE_vsp_Header_TB extends  WATE_vsp_common_TB
+{
+       
+  /**
+   *
+   ****************************************************************/
+   void update() {
+     int i;
+     int pad = 0;
+     filledBlock = { };  
+    
+     filledBlock.append( rep_string(pad) + "<?xml version=\"1.0\"?>");
+	   filledBlock.append( rep_string(pad) + "<Vsp_Geometry>");
+     pad += 2;
+     filledBlock.append( to_XML_with_pad("Version", "3", pad) );
+     filledBlock.append( to_XML_with_pad("Name", "WATEvspModel", pad) );
+     filledBlock.append( to_XML_with_pad("CG_Rel_AC_Flag", "0", pad) );
+     filledBlock.append( to_XML_with_pad("CG_X", toStr(cg), pad) );
+     filledBlock.append( to_XML_with_pad("CG_Y","0.000000", pad) );
+     filledBlock.append( to_XML_with_pad("CG_Z", "0.000000", pad) );
+
+     filledBlock.append( to_XML_with_pad("CFD_Mesh_Base_Length", "0.500000", pad) );
+
+     filledBlock.append( rep_string(pad) + "<VirtWindow_List>");
+     pad += 2;
+
+     for( i = 1 ; i <= 9 ; i++ ) {
+
+       filledBlock.append( rep_string(pad) + "<VirtWindow>");
+       pad += 2;
+       filledBlock.append( to_XML_with_pad("Back_Img_Scale_W", "1.000000", pad) );
+       filledBlock.append( to_XML_with_pad("Back_Img_Scale_H", "1.000000", pad) );
+       filledBlock.append( to_XML_with_pad("Back_Img_Offset_X", "0.000000", pad) );
+       filledBlock.append( to_XML_with_pad("Back_Img_Offset_Y", "0.000000", pad) );
+       pad -= 2;
+       filledBlock.append( rep_string(pad) + "</VirtWindow>");
+
+     }
+
+     pad -= 2;
+     filledBlock.append( rep_string(pad) + "</VirtWindow_List>");
+
+     filledBlock.append( rep_string(pad) + "<Component_List>" );
+   }
+}
+
+#endif
+

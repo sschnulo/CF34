@@ -1,0 +1,100 @@
+// <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+//              Emissions DataViewer Specification
+// <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+
+OutFileStream EI_Stream { filename = "Output/CF34.LTONOx.out"; } 
+
+DataViewer PageViewer ei_data1 { 
+
+  SimpleBlock Header { 
+body =   "****************************************************************************\n" +
+         "Version:????????????????????    model:???????????????    run by:????????????";
+vars = { "VERSION", "MODELNAME", "USER" } 
+  } 
+ 
+  SimpleBlock EIData { 
+  body = "Freestream Mach: ?.????   Local Mach: ?.????   altitude: ?????.?     dTs: ??.? 
+
+    ------PERFORMANCE------                ----------EI DATA----------
+    Power Code         ??.?                EINOx              ????.??? g/kg
+    Gross Thrust  ??????.?? lb             EICO               ????.??? g/kg
+    Ram Drag      ??????.?? lb             EIHC               ????.??? g/kg
+    Net Thrust    ??????.?? lb
+    Fuel Flow     ??????.?? lb/hr
+
+    ----------------STATION PROPERTIES--------------
+    Pt3      ???.??? psia            Tt3   ????.?? R
+    Pt4/Pt3   ??.???                 FAR   ?.?????";
+
+
+  vars = { "Ambient.MN", "Ambient.MN", "Ambient.alt", "Ambient.dTs", 
+           "PC",                "Burner.Emissions.EINOx", 
+           "PERF.myFg", "Burner.Emissions.EICO",
+           "Inlet.Fram", "Burner.Emissions.EIHC",     
+           "PERF.myFn",            
+           "PERF.WfuelHour",
+           "HPC.Fl_O.Pt", "HPC.Fl_O.Tt",
+           "Burner.Fl_O.Pt/HPC.Fl_O.Pt", "Burner.FAR"} 
+  } 
+
+  anchor = "Header"; 
+  Header.bottom = "EIData"; 
+  pageWidth = 162; pageHeight = 65; 
+  outStreamHandle = "EI_Stream"; 
+}
+
+
+
+DataViewer PageViewer ei_data2 { 
+
+  SimpleBlock Header { 
+body =   "****************************************************************************\n" +
+         "Version:????????????????????    model:???????????????    run by:????????????";
+vars = { "VERSION", "MODELNAME", "USER" } 
+  } 
+ 
+  SimpleBlock EIData { 
+  body = "Freestream Mach: ?.????   Local Mach: ?.????   altitude: ?????.?     dTs: ??.? 
+
+    ------PERFORMANCE------                ----------EI DATA----------
+    Power Code         ??.?                EINOx              ????.??? g/kg
+    Gross Thrust  ??????.?? lb             EICO               ????.??? g/kg
+    Ram Drag      ??????.?? lb             EIHC               ????.??? g/kg
+    Net Thrust    ??????.?? lb            
+    Fuel Flow     ??????.?? lb/hr               
+                 
+    ----------------STATION PROPERTIES--------------
+    Pt3      ???.??? psia            Tt3   ????.?? R
+    Pt4/Pt3   ??.???                 FAR   ?.????? 
+
+
+    ----EI SUMMARY DATA------
+    NOx LTO_Dp/Foo   ???.???? g/kN
+    CAEP/4 Limit     ???.???? g/kN
+    CAEP/6 Limit     ???.???? g/KN
+    OPR              ???.????";
+
+  
+vars = { "Ambient.MN", "Ambient.MN", "Ambient.alt", "Ambient.dTs", 
+           "PC",                "Burner.Emissions.EINOx", 
+           "PERF.myFg", "Burner.Emissions.EICO",
+           "Inlet.Fram", "Burner.Emissions.EIHC",
+           "PERF.myFn",
+           "PERF.WfuelHour",    
+ 
+                                
+                                
+           "HPC.Fl_O.Pt", "HPC.Fl_O.Tt",
+           "Burner.Fl_O.Pt/HPC.Fl_O.Pt", "Burner.FAR", 
+
+   "LTONOx_DpF00",
+   "LTO_Rule4",
+   "LTO_Rule6",
+   "EIOPR"} 
+  } 
+
+  anchor = "Header"; 
+  Header.bottom = "EIData"; 
+  pageWidth = 162; pageHeight = 65; 
+  outStreamHandle = "EI_Stream"; 
+}
